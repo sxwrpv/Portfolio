@@ -596,22 +596,88 @@ function fileSwap(ctl, name, onLoad) {
 }
 </script>
 <script>
-const tulips = paint(1500, 1650, (ctx, w, h) => {
-  const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, '#6fb0e8'); g.addColorStop(.6, '#cfe6f7'); g.addColorStop(1, '#9fc58a');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = 'rgba(255,255,255,.7)'; for (let i = 0; i < 12; i++) { ctx.beginPath(); ctx.ellipse(Math.random() * w, Math.random() * h * .35, 80 + Math.random() * 80, 25 + Math.random() * 20, 0, 0, 6.28); ctx.fill(); }
-  const tulip = (x, y, s, hue) => {
-    ctx.strokeStyle = '#4c8a3a'; ctx.lineWidth = s * .12; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - s * .2, y + s * 2, x + s * .1, h); ctx.stroke();
-    ctx.fillStyle = '#5c9a45'; ctx.beginPath(); ctx.ellipse(x - s * .4, y + s * 2.2, s * .25, s * 1.1, -.3, 0, 6.28); ctx.fill();
-    const pg = ctx.createLinearGradient(x, y - s, x, y + s * .4);
-    pg.addColorStop(0, `hsl(${hue}, 80%, 88%)`); pg.addColorStop(1, `hsl(${hue}, 70%, 58%)`);
-    ctx.fillStyle = pg;
-    ctx.beginPath(); ctx.moveTo(x - s * .55, y - s * .7); ctx.quadraticCurveTo(x - s * .7, y + s * .45, x, y + s * .4); ctx.quadraticCurveTo(x + s * .7, y + s * .45, x + s * .55, y - s * .7); ctx.quadraticCurveTo(x + s * .25, y - s * .3, x, y - s * .85); ctx.quadraticCurveTo(x - s * .25, y - s * .3, x - s * .55, y - s * .7); ctx.fill();
-  };
-  tulip(w * .35, h * .5, 150, 340); tulip(w * .62, h * .42, 170, 350); tulip(w * .8, h * .6, 120, 335);
+// A procedural "photo": a mountain lake at blue hour under a crescent moon.
+function rand(seed) { return () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }; }
+function ridge(w, base, amp, rough, seed) {
+  const r = rand(seed), n = 129, pts = new Array(n).fill(0);
+  let step = n - 1, a = amp;
+  pts[0] = (r() - .5) * amp; pts[n - 1] = (r() - .5) * amp;
+  while (step > 1) {
+    for (let i = step / 2; i < n; i += step) pts[i] = (pts[i - step / 2] + pts[i + step / 2]) / 2 + (r() - .5) * a;
+    step /= 2; a *= rough;
+  }
+  return pts.map((y, i) => [i / (n - 1) * w, base + y]);
+}
+function fillRidge(ctx, pts, bottom, fill) {
+  ctx.beginPath(); ctx.moveTo(0, bottom);
+  pts.forEach(([x, y]) => ctx.lineTo(x, y));
+  ctx.lineTo(pts.at(-1)[0], bottom); ctx.closePath();
+  ctx.fillStyle = fill; ctx.fill();
+}
+function pine(ctx, x, y, h) {
+  ctx.beginPath(); ctx.moveTo(x, y - h);
+  for (let i = 1; i <= 6; i++) { const t = i / 6, wd = h * .2 * t; ctx.lineTo(x + wd, y - h + h * t * .92); ctx.lineTo(x + wd * .35, y - h + h * t * .92 - h * .04); }
+  for (let i = 6; i >= 1; i--) { const t = i / 6, wd = h * .2 * t; ctx.lineTo(x - wd * .35, y - h + h * t * .92 - h * .04); ctx.lineTo(x - wd, y - h + h * t * .92); }
+  ctx.closePath(); ctx.fill();
+}
+const scene = paint(1500, 1650, (ctx, w, h) => {
+  const hz = h * .6;                                  // horizon / waterline
+  const sky = ctx.createLinearGradient(0, 0, 0, hz);
+  sky.addColorStop(0, '#0b1533'); sky.addColorStop(.45, '#2a3a74'); sky.addColorStop(.78, '#8a6f9e'); sky.addColorStop(1, '#f0a985');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, w, hz);
+  const r = rand(7);
+  for (let i = 0; i < 260; i++) {                     // stars, fading toward the horizon
+    const y = r() ** 1.8 * hz * .7, a = (1 - y / (hz * .7)) * (.35 + r() * .65);
+    ctx.fillStyle = `rgba(255,248,235,${a})`; ctx.beginPath(); ctx.arc(r() * w, y, r() * 1.6 + .3, 0, 6.29); ctx.fill();
+  }
+  const mx = w * .68, my = h * .2, mr = 58;           // crescent moon with halo
+  const halo = ctx.createRadialGradient(mx, my, mr * .6, mx, my, mr * 7);
+  halo.addColorStop(0, 'rgba(255,236,210,.42)'); halo.addColorStop(.25, 'rgba(255,220,200,.12)'); halo.addColorStop(1, 'rgba(255,220,200,0)');
+  ctx.fillStyle = halo; ctx.fillRect(0, 0, w, hz);
+  const moon = paint(mr * 3, mr * 3, (m, mw, mh) => {
+    const g = m.createRadialGradient(mw * .45, mh * .45, 0, mw / 2, mh / 2, mr);
+    g.addColorStop(0, '#fffaf0'); g.addColorStop(1, '#f3dcc0');
+    m.fillStyle = g; m.beginPath(); m.arc(mw / 2, mh / 2, mr, 0, 6.29); m.fill();
+    m.globalCompositeOperation = 'destination-out';
+    m.beginPath(); m.arc(mw / 2 + mr * .42, mh / 2 - mr * .18, mr * .9, 0, 6.29); m.fill();
+  });
+  ctx.drawImage(moon, mx - mr * 1.5, my - mr * 1.5);
+  const glow = ctx.createLinearGradient(0, hz - h * .18, 0, hz);  // warm band low in the sky
+  glow.addColorStop(0, 'rgba(255,170,120,0)'); glow.addColorStop(1, 'rgba(255,190,140,.45)');
+  ctx.fillStyle = glow; ctx.fillRect(0, hz - h * .18, w, h * .18);
+  // Mountain layers: far ones lighter and bluer (atmospheric perspective).
+  const layers = [[hz - 330, 260, .56, 11, '#8c7fa8'], [hz - 230, 220, .55, 23, '#5d5b8a'], [hz - 140, 170, .52, 5, '#36396a'], [hz - 60, 90, .5, 41, '#1d2347']];
+  const land = paint(w, hz, (c) => layers.forEach(([b, a, ro, sd, col]) => fillRidge(c, ridge(w, b, a, ro, sd), hz, col)));
+  ctx.drawImage(land, 0, 0);
+  ctx.fillStyle = '#0d1230';                          // pine shoreline
+  const rp = rand(3);
+  for (let x = -20; x < w + 20; x += 9 + rp() * 16) pine(ctx, x, hz + 4, 40 + rp() * 70 * (Math.sin(x / 140) * .5 + .8));
+  ctx.fillRect(0, hz - 6, w, 12);
+  // Lake: mirrored sky and mountains, broken into gently rippled strips.
+  const top = paint(w, hz, (c) => { c.drawImage(ctx.canvas, 0, 0, w, hz, 0, 0, w, hz); });
+  for (let y = 0; y < h - hz; y += 2) {
+    const sy = hz - 1 - y * .92, off = Math.sin(y * .21) * (1 + y * .02) + Math.sin(y * .053 + 1) * 2;
+    ctx.globalAlpha = .8 - y / (h - hz) * .25;
+    ctx.drawImage(top, 0, Math.max(0, sy), w, 2, off, hz + y, w, 2);
+  }
+  ctx.globalAlpha = 1;
+  const water = ctx.createLinearGradient(0, hz, 0, h);
+  water.addColorStop(0, 'rgba(20,28,70,.15)'); water.addColorStop(1, 'rgba(8,12,34,.75)');
+  ctx.fillStyle = water; ctx.fillRect(0, hz, w, h - hz);
+  const rg = rand(19);                                 // moon path glitter
+  for (let i = 0; i < 160; i++) {
+    const y = hz + 12 + rg() ** 1.4 * (h - hz - 20), spread = 10 + (y - hz) * .18;
+    ctx.fillStyle = `rgba(255,232,205,${.25 + rg() * .55})`;
+    ctx.fillRect(mx + (rg() - .5) * spread * 2, y, 6 + rg() * 26 * (1 + (y - hz) / 500), 1.2 + rg() * 1.4);
+  }
+  const mist = ctx.createLinearGradient(0, hz - 40, 0, hz + 60);  // mist on the water
+  mist.addColorStop(0, 'rgba(210,190,220,0)'); mist.addColorStop(.5, 'rgba(210,190,220,.22)'); mist.addColorStop(1, 'rgba(210,190,220,0)');
+  ctx.fillStyle = mist; ctx.fillRect(0, hz - 40, w, 100);
+  const img = ctx.getImageData(0, 0, w, h), d = img.data, rn = rand(5);   // film grain
+  for (let i = 0; i < d.length; i += 4) { const n = (rn() - .5) * 14; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  ctx.putImageData(img, 0, 0);
 });
-const gl = shader({ autoMouse: { x: .5, y: .4 }, mouseEase: 2.5, textures: { uImg: { source: tulips, mips: true } } });
+const gl = shader({ autoMouse: { x: .5, y: .4 }, mouseEase: 2.5, textures: { uImg: { source: scene, mips: true } } });
 fileSwap(gl, 'uImg');
 </script>
 </body>

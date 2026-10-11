@@ -25,7 +25,7 @@ body { background: #f2f1ee; color: #2a2926; }
 </head>
 <body>
 <canvas data-gl></canvas>
-<div class="copy"><h1>Where<br>Purpose<br>Gathers.</h1><p>A gathering place for people building work that lasts, shaped by care and made to be shared.</p></div>
+<div class="copy"><h1>Paper<br>Garden</h1><p>Doves and flowers press up through the sheet, catch the light, then settle back into the page.</p></div>
 <script type="x-shader/x-fragment" id="main">
 #define PI 3.14159265
 #define TAU 6.28318531
@@ -120,22 +120,29 @@ float bayer2(vec2 a) { a = floor(a); return fract(dot(a, vec2(.5, a.y * .75))); 
 float bayer4(vec2 a) { return bayer2(.5 * a) * .25 + bayer2(a); }
 float bayer8(vec2 a) { return bayer4(.5 * a) * .25 + bayer2(a); }
 float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(.06711056, .00583715)))); }
-uniform sampler2D uRelief;
-float h(vec2 uv) { return textureLod(uRelief, uv, 1.5).r * .6 + textureLod(uRelief, uv, 3.5).r * .4; }
+uniform sampler2D uRelief; // rg: baked normal, b: height
+float height(vec2 uv) { return texture(uRelief, uv).b; }
 void main() {
   vec2 uv = vUv;
-  vec2 e = vec2(1.2 * uPx / uRes.y, 0);
-  vec3 n = normalize(vec3((h(uv - e.xy) - h(uv + e.xy)) * 18., (h(uv - e.yx) - h(uv + e.yx)) * 18., 1.));
+  vec4 t = texture(uRelief, uv);
+  // The relief rises out of the page where a slow noise front passes, then settles back.
+  float cyc = mod(uTime * .12 + 1., 2.);
+  float m = fbm(vec3(uv * vec2(uRes.x / uRes.y, 1.) * 2.2, uTime * .05)) * .5 + .5;
+  float th = abs(cyc - 1.) * 1.3 - .15;
+  float show = step(bayer8(gl_FragCoord.xy / uPx), smoothstep(th - .05, th + .05, m));
+  vec2 g = (t.rg * 2. - 1.) * show;
+  vec3 n = normalize(vec3(g, sqrt(max(0., 1. - dot(g, g)))));
   vec3 L = normalize(vec3(-.55 + (uMouse.x - .5) * .6, .65, .6));
   float dif = max(dot(n, L), 0.);
-  float ao = 1. - textureLod(uRelief, uv, 5.).r * .25;
+  // Soft cast shadow: is anything taller between this pixel and the light?
+  vec2 dir = normalize(L.xy) / uRes * uRes.y * .0022;
+  float occ = 0., j = ign(gl_FragCoord.xy);
+  for (int i = 0; i < 12; i++) { float k = float(i) + j + .5; occ = max(occ, height(uv + dir * k) - t.b - k * .045); }
+  float shade = 1. - clamp(occ * 2.2, 0., 1.) * .28 * show;
+  float spec = pow(max(dot(reflect(-L, n), vec3(0, 0, 1)), 0.), 28.) * .12 * show;
   vec3 paper = vec3(.95, .945, .93);
-  vec3 relief = paper * (.62 + .45 * dif) * ao;
-  float cyc = mod(uTime * .12 + 1., 2.);
-  float m = fbm(vec3(uv * vec2(uRes.x / uRes.y, 1.) * 2.5, uTime * .05)) * .5 + .5;
-  float th = abs(cyc - 1.) * 1.3 - .15;
-  float show = step(bayer4(gl_FragCoord.xy / (1.6 * uPx)), smoothstep(th - .12, th + .12, m));
-  vec3 col = mix(vec3(.945, .94, .93), relief, show);
+  vec3 col = paper * (.5 + .55 * dif) / (.5 + .55 * L.z) * shade + spec;
+  col += (ign(gl_FragCoord.xy) - .5) / 255.;
   o = vec4(col, 1);
 }
 </script>
@@ -637,6 +644,58 @@ function fileSwap(ctl, name, onLoad) {
 }
 </script>
 <script>
+// Exact Euclidean distance transform (Felzenszwalb–Huttenlocher), one 1D pass per row and column.
+function edt(g, w, h) {
+  const n = Math.max(w, h), f = new Float64Array(n), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1);
+  const line = (len) => {
+    let k = 0; v[0] = 0; z[0] = -1e20; z[1] = 1e20;
+    for (let q = 1; q < len; q++) {
+      let s;
+      while ((s = (f[q] + q * q - f[v[k]] - v[k] * v[k]) / (2 * q - 2 * v[k])) <= z[k]) k--;
+      v[++k] = q; z[k] = s; z[k + 1] = 1e20;
+    }
+    for (let q = 0, j = 0; q < len; q++) { while (z[j + 1] < q) j++; d[q] = (q - v[j]) ** 2 + f[v[j]]; }
+  };
+  for (let x = 0; x < w; x++) { for (let y = 0; y < h; y++) f[y] = g[y * w + x]; line(h); for (let y = 0; y < h; y++) g[y * w + x] = d[y]; }
+  for (let y = 0; y < h; y++) { for (let x = 0; x < w; x++) f[x] = g[y * w + x]; line(w); for (let x = 0; x < w; x++) g[y * w + x] = Math.sqrt(d[x]); }
+  return g;
+}
+// Small separable [1 2 1] blur, run four times: removes the pixel-direction noise of the distance field.
+function smoothField(D, w, h) {
+  const t = new Float64Array(w * h);
+  for (let pass = 0; pass < 4; pass++) {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; t[i] = (D[i - (x > 0)] + 2 * D[i] + D[i + (x < w - 1)]) / 4; }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; D[i] = (t[i - (y > 0) * w] + 2 * t[i] + t[i + (y < h - 1) * w]) / 4; }
+  }
+  return D;
+}
+// Embossed profile: a rounded shoulder of radius R, flat on top like pressed paper.
+function bakeRelief(src, out, R, tilt) {
+  const w = src.width, h = src.height;
+  const a = src.getContext('2d').getImageData(0, 0, w, h).data;
+  const g = new Float64Array(w * h);
+  for (let i = 0; i < w * h; i++) g[i] = a[i * 4] > 127 ? 1e20 : 0;
+  const D = smoothField(edt(g, w, h), w, h);
+  const img = new ImageData(w, h), o = img.data;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, d = D[i];
+    let nx = 0, ny = 0, ht = d > 0 ? 1 : 0;
+    if (d > 0 && d < R) {
+      const gx = (D[y * w + Math.min(w - 1, x + 1)] - D[y * w + Math.max(0, x - 1)]) / 2;
+      const gy = (D[Math.min(h - 1, y + 1) * w + x] - D[Math.max(0, y - 1) * w + x]) / 2;
+      const len = Math.hypot(gx, gy) || 1, u = 1 - Math.max(d, .6) / R;
+      ht = Math.sqrt(1 - u * u);
+      const slope = Math.min(5, u / ht) * tilt;
+      nx = -slope * gx / len; ny = slope * gy / len;
+      const l = Math.hypot(nx, ny, 1); nx /= l; ny /= l;
+    }
+    o[i * 4] = Math.round((nx * .5 + .5) * 255); o[i * 4 + 1] = Math.round((ny * .5 + .5) * 255); o[i * 4 + 2] = Math.round(ht * 255); o[i * 4 + 3] = 255;
+  }
+  out.width = w; out.height = h;
+  out.getContext('2d').putImageData(img, 0, 0);
+}
+
+// The original illustration, drawn in a 1400×900 design space and scaled to cover the screen.
 function dove(ctx, x, y, s, a) {
   ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(s, s);
   ctx.beginPath();
@@ -647,8 +706,11 @@ function dove(ctx, x, y, s, a) {
 function flower(ctx, x, y, s) {
   for (let k = 0; k < 8; k++) { ctx.save(); ctx.translate(x, y); ctx.rotate(k * .785); ctx.beginPath(); ctx.ellipse(0, -s * .55, s * .22, s * .5, 0, 0, 6.28); ctx.fill(); ctx.restore(); }
 }
-const relief = paint(1400, 900, (ctx, w, h) => {
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
+function garden(ctx, W, H) {
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  const k = Math.max(W / 1400, H / 900);
+  ctx.save(); ctx.translate((W - 1400 * k) / 2, (H - 900 * k) / 2); ctx.scale(k, k);
+  const w = 1400, h = 900;
   ctx.fillStyle = '#fff';
   dove(ctx, w * .58, h * .2, 1.9, -.25);
   dove(ctx, w * .28, h * .62, 1.3, .2);
@@ -656,8 +718,18 @@ const relief = paint(1400, 900, (ctx, w, h) => {
   [[.12, .2, 50], [.2, .85, 70], [.88, .18, 60], [.72, .88, 55], [.45, .82, 40], [.05, .5, 45], [.95, .8, 50]].forEach(([x, y, s]) => flower(ctx, w * x, h * y, s));
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 9;
   for (let i = 0; i < 9; i++) { ctx.beginPath(); const x = Math.sin(i * 7.1) * .5 + .5; ctx.moveTo(w * x, h); ctx.bezierCurveTo(w * (x + .05), h * .7, w * (x - .08), h * .5, w * (x + .02), h * (.3 + (i % 3) * .1)); ctx.stroke(); }
+  ctx.restore();
+}
+const art = document.createElement('canvas'), relief = document.createElement('canvas');
+shader({
+  onResize: (W, H, c) => {
+    // Bake at up to 1600 px wide; the normals stay smooth when scaled up.
+    const k = Math.min(1, 1600 / W);
+    paint(W * k, H * k, garden, art);
+    bakeRelief(art, relief, Math.min(W, H) * k * .016, .9);
+    c.tex('uRelief', relief);
+  },
 });
-shader({ textures: { uRelief: { source: relief, mips: true } } });
 </script>
 </body>
 </html>

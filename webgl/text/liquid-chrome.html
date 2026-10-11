@@ -175,22 +175,23 @@ vec3 studio(vec3 d, float rough) {
 }
 vec3 studio(vec3 d) { return studio(d, 0.); }
 uniform sampler2D uText;
+uniform sampler2D uNormal;
 uniform sampler2D uTrail;
-float h(vec2 uv) { return textureLod(uText, uv, 2.9).r + textureLod(uText, uv, 4.7).r * .5; }
+// Normals are baked on the CPU from an exact distance field, so the bevel has no 8-bit steps.
+vec3 bevel(vec2 uv) { vec2 t = texture(uNormal, uv).rg * 2. - 1.; return normalize(vec3(t, sqrt(max(0., 1. - dot(t, t))))); }
 void main() {
   vec2 uv = vUv;
   float tr = texture(uTrail, uv).r;
   vec2 rip = vec2(snoise(uv * 12. + uTime), snoise(uv * 12. - uTime)) * .006 * tr;
   vec2 q = uv + rip;
-  float m = textureLod(uText, q, .7).r;
-  vec2 e = vec2(1.2 * uPx / uRes.y, 0);
-  vec3 n = normalize(vec3((h(q - e.xy) - h(q + e.xy)) * 6., (h(q - e.yx) - h(q + e.yx)) * 6., 1.));
+  float m = texture(uText, q).r;
+  vec3 n = bevel(q);
   float sweep = exp(-pow(uv.x - fract(uTime * .12) * 1.6 + .3, 2.) * 18.);
   vec3 rd = vec3(0, 0, -1);
   vec3 rf = reflect(rd, n);
   rf.xz = rot(uTime * .3) * rf.xz;
   float caust = pow(abs(snoise(vec3(q * vec2(9., 4.), uTime * .5))), 2.);
-  vec3 chrome = studio(rf) * (.5 + caust) ;
+  vec3 chrome = studio(rf, .05) * (.55 + caust * .8);
   float light = clamp(sweep * 1.2 + tr * 1.4 + .4, 0., 1.6);
   vec3 col = chrome * m * light;
   col += vec3(.9) * caust * m * tr * .5;
@@ -697,6 +698,57 @@ function fileSwap(ctl, name, onLoad) {
 </script>
 <script>
 const txt = document.createElement('canvas');
+const nrm = document.createElement('canvas');
+// Exact Euclidean distance transform (Felzenszwalb–Huttenlocher), one 1D pass per row and column.
+function edt(g, w, h) {
+  const n = Math.max(w, h), f = new Float64Array(n), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1);
+  const line = (len) => {
+    let k = 0; v[0] = 0; z[0] = -1e20; z[1] = 1e20;
+    for (let q = 1; q < len; q++) {
+      let s;
+      while ((s = (f[q] + q * q - f[v[k]] - v[k] * v[k]) / (2 * q - 2 * v[k])) <= z[k]) k--;
+      v[++k] = q; z[k] = s; z[k + 1] = 1e20;
+    }
+    for (let q = 0, j = 0; q < len; q++) { while (z[j + 1] < q) j++; d[q] = (q - v[j]) ** 2 + f[v[j]]; }
+  };
+  for (let x = 0; x < w; x++) { for (let y = 0; y < h; y++) f[y] = g[y * w + x]; line(h); for (let y = 0; y < h; y++) g[y * w + x] = d[y]; }
+  for (let y = 0; y < h; y++) { for (let x = 0; x < w; x++) f[x] = g[y * w + x]; line(w); for (let x = 0; x < w; x++) g[y * w + x] = Math.sqrt(d[x]); }
+  return g;
+}
+// Small separable [1 2 1] blur, run four times: removes the pixel-direction noise of the distance field.
+function smoothField(D, w, h) {
+  const t = new Float64Array(w * h);
+  for (let pass = 0; pass < 4; pass++) {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; t[i] = (D[i - (x > 0)] + 2 * D[i] + D[i + (x < w - 1)]) / 4; }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; D[i] = (t[i - (y > 0) * w] + 2 * t[i] + t[i + (y < h - 1) * w]) / 4; }
+  }
+  return D;
+}
+// Rounded chrome profile: height = quarter circle of radius R over the distance to the edge.
+function bakeNormals(src, out, R, tilt) {
+  const w = src.width, h = src.height;
+  const a = src.getContext('2d').getImageData(0, 0, w, h).data;
+  const g = new Float64Array(w * h);
+  for (let i = 0; i < w * h; i++) g[i] = a[i * 4] > 127 ? 1e20 : 0;
+  const D = smoothField(edt(g, w, h), w, h);
+  const img = new ImageData(w, h), o = img.data;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, d = D[i];
+    let nx = 0, ny = 0;
+    if (d > 0 && d < R) {
+      const gx = (D[y * w + Math.min(w - 1, x + 1)] - D[y * w + Math.max(0, x - 1)]) / 2;
+      const gy = (D[Math.min(h - 1, y + 1) * w + x] - D[Math.max(0, y - 1) * w + x]) / 2;
+      const len = Math.hypot(gx, gy) || 1, u = 1 - Math.max(d, .6) / R;
+      const slope = Math.min(6, u / Math.sqrt(1 - u * u)) * tilt;
+      nx = -slope * gx / len; ny = slope * gy / len;
+      const l = Math.hypot(nx, ny, 1); nx /= l; ny /= l;
+    }
+    o[i * 4] = Math.round((nx * .5 + .5) * 255); o[i * 4 + 1] = Math.round((ny * .5 + .5) * 255); o[i * 4 + 2] = 0; o[i * 4 + 3] = 255;
+  }
+  out.width = w; out.height = h;
+  out.getContext('2d').putImageData(img, 0, 0);
+}
+const WORD = 'Stand Out';
 shader({
   autoMouse: true,
   passes: [{ id: 'uTrail', fs: 'trail', size: () => [innerWidth / 2, innerHeight / 2], feedback: true, float: true, hz: 60 }, { fs: 'main' }],
@@ -707,10 +759,15 @@ shader({
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      fitFont(ctx, 'Stand Out', w * .84, h * .3, { weight: 800, family: '"Helvetica Neue", Helvetica, Arial, sans-serif' });
-      ctx.fillText('Stand Out', w / 2, h / 2);
+      fitFont(ctx, WORD, w * .8, h * .32, { weight: 800, family: '"Helvetica Neue", Helvetica, Arial, sans-serif' });
+      ctx.fillText(WORD, w / 2, h / 2);
     }, txt);
-    c.tex('uText', txt, { mips: true });
+    // Bake at up to 1400 px wide; linear filtering keeps the normals smooth when scaled up.
+    const k = Math.min(1, 1400 / W);
+    const small = paint(W * k, H * k, (ctx, w, h) => ctx.drawImage(txt, 0, 0, w, h));
+    bakeNormals(small, nrm, H * k * .03, 1.1);
+    c.tex('uText', txt);
+    c.tex('uNormal', nrm);
   },
 });
 </script>
