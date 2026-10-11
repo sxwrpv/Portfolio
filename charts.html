@@ -59,7 +59,7 @@ button { font: inherit; color: inherit; }
 .head .lead { max-width: 48ch; color: var(--soft); font-size: clamp(16px, 1.25vw, 18px); }
 .facts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
 .facts b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
-.tabs { position: sticky; top: 0; z-index: 20; display: flex; gap: 6px; padding: 74px 0 14px; overflow-x: auto; scrollbar-width: none; background: linear-gradient(var(--bg) 82%, rgba(7, 7, 8, 0)); -webkit-mask-image: linear-gradient(90deg, #000 94%, transparent); mask-image: linear-gradient(90deg, #000 94%, transparent); }
+.tabs { position: sticky; top: 0; z-index: 20; display: flex; gap: 6px; padding: 74px 0 14px; overflow-x: auto; scrollbar-width: none; background: linear-gradient(var(--bg) 82%, rgba(7, 7, 8, 0)); }
 .tabs::-webkit-scrollbar { display: none; }
 .tabs button { flex: none; height: 34px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--soft); font-size: 13.5px; cursor: pointer; white-space: nowrap; transition: border-color .3s, background .3s var(--ease), color .3s var(--ease); }
 .tabs button:hover { border-color: var(--line-2); color: var(--ink); }
@@ -87,7 +87,7 @@ button { font: inherit; color: inherit; }
 .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; margin-top: 90px; padding: 22px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
 .foot a { color: var(--soft); text-decoration: none; }
 .foot a:hover { color: var(--ink); }
-@media (max-width: 760px) { .head { grid-template-columns: 1fr; } .tabs { padding-top: 64px; } .info { grid-template-columns: 1fr; } .ctrl { grid-column: 1; grid-row: auto; } .stage iframe { height: 860px; } }
+@media (max-width: 760px) { .head { grid-template-columns: 1fr; } .tabs { padding: 10px 0; } .info { grid-template-columns: 1fr; } .ctrl { grid-column: 1; grid-row: auto; } .stage iframe { height: 860px; } }
 @media (prefers-reduced-motion: reduce) { .stage iframe { transition: none; } }
 </style>
 </head>
@@ -110,7 +110,7 @@ button { font: inherit; color: inherit; }
     <div class="facts"><span data-h="f1"></span><span data-h="f2"></span><span data-h="f3"></span><span data-h="f4"></span></div>
   </header>
   <div class="tabs" role="tablist" data-tabs></div>
-  <section class="stage" id="stage" role="tabpanel" data-stage><iframe data-frame title="" loading="eager"></iframe></section>
+  <section class="stage" id="stage" role="tabpanel" tabindex="0" data-stage><iframe data-frame title="" loading="eager"></iframe></section>
   <div class="info">
     <div><span class="num" data-num></span><h2 data-name></h2></div>
     <p data-desc></p>
@@ -132,13 +132,13 @@ const T = {
   ru: {
     docTitle: 'Графики — sxwrpv motion kit', skip: 'К графику', navScenes: 'Сцены', navIndex: 'Индекс', navCharts: 'Графики', navCatalog: 'Каталог',
     title: 'Графики', lead: `${items.length} интерактивных графиков на чистом SVG и JS. Каждый живёт в одном HTML-файле: наведите, перетащите, переключите — всё анимируется.`,
-    f1: '<b>17</b> типов графиков', f2: '<b>4</b> цветовые темы', f3: '<b>0</b> библиотек', f4: '<b>←&nbsp;→</b> листать с клавиатуры',
+    f1: `<b>${items.length}</b> типов графиков`, f2: '<b>4</b> цветовые темы', f3: '<b>0</b> библиотек', f4: '<b>←&nbsp;→</b> листать с клавиатуры',
     open: 'Открыть отдельно', prev: 'Предыдущий график', next: 'Следующий график', allTitle: 'Все графики', foot: 'Графики открываются прямо с диска. Тема выбирается кружками в углу каждого графика.',
   },
   en: {
     docTitle: 'Charts — sxwrpv motion kit', skip: 'Skip to the chart', navScenes: 'Scenes', navIndex: 'Index', navCharts: 'Charts', navCatalog: 'Catalogue',
     title: 'Interactive charts', lead: `${items.length} interactive charts in plain SVG and JS. Each lives in a single HTML file: hover, drag, switch — everything animates.`,
-    f1: '<b>17</b> chart types', f2: '<b>4</b> colour themes', f3: '<b>0</b> libraries', f4: '<b>←&nbsp;→</b> browse with the keyboard',
+    f1: `<b>${items.length}</b> chart types`, f2: '<b>4</b> colour themes', f3: '<b>0</b> libraries', f4: '<b>←&nbsp;→</b> browse with the keyboard',
     open: 'Open on its own', prev: 'Previous chart', next: 'Next chart', allTitle: 'All charts', foot: 'Charts open straight from disk. Pick a theme with the dots in the corner of each chart.',
   },
 };
@@ -150,6 +150,8 @@ const slug = (i) => i.file.replace(/^charts\/|\.html$/g, '');
 const tt = (i) => (lang === 'en' ? i.title_en : i.title);
 const tabs = $('[data-tabs]'), grid = $('[data-grid]'), stage = $('[data-stage]'), frame = $('[data-frame]');
 let current = Math.max(0, items.findIndex((i) => slug(i) === location.hash.slice(1)));
+let wanted = '', swapTimer = 0;
+const setHash = () => { try { history.replaceState(null, '', '#' + slug(items[current])); } catch (e) { /* rate-limited: the hash is cosmetic */ } };
 
 function renderLists() {
   tabs.innerHTML = items.map((i, k) => `<button type="button" role="tab" id="tab-${k}" aria-controls="stage" aria-selected="${k === current}" tabindex="${k === current ? 0 : -1}">${esc(tt(i))}</button>`).join('');
@@ -173,14 +175,17 @@ function show(k, focusTab) {
   const tab = tabs.children[current];
   tab.scrollIntoView({ block: 'nearest', inline: 'center', behavior: reduce ? 'auto' : 'smooth' });
   if (focusTab) tab.focus({ preventScroll: true });
-  history.replaceState(null, '', '#' + slug(items[current]));
+  setHash();
   renderInfo();
-  const src = items[current].file;
-  if (frame.getAttribute('src') === src) return;
+  const file = items[current].file;
+  if (file === wanted) return;
+  wanted = file;
   stage.classList.add('is-swapping');
-  setTimeout(() => { frame.src = src; }, reduce ? 0 : 220);
+  clearTimeout(swapTimer);
+  swapTimer = setTimeout(() => { swapTimer = 0; frame.src = file; }, reduce ? 0 : 220);
 }
-frame.addEventListener('load', () => stage.classList.remove('is-swapping'));
+// Only fade back in once the requested file has loaded, not a late load from the previous one.
+frame.addEventListener('load', () => { if (!swapTimer && frame.getAttribute('src') === wanted) stage.classList.remove('is-swapping'); });
 tabs.addEventListener('click', (e) => { const b = e.target.closest('[role="tab"]'); if (b) show([...tabs.children].indexOf(b)); });
 tabs.addEventListener('keydown', (e) => {
   const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
@@ -208,9 +213,16 @@ $('[data-lang]').addEventListener('click', () => {
   try { localStorage.setItem('mk-lang', lang); } catch (e) {}
   applyLang();
 });
+// Arrow keys browse charts anywhere on the page, except while typing or inside a tab (the tablist handles its own keys).
+addEventListener('keydown', (e) => {
+  if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.target.closest('input, textarea, [role="tab"]')) return;
+  const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+  if (d) show(current + d);
+});
 applyLang();
-frame.src = items[current].file;
-history.replaceState(null, '', '#' + slug(items[current]));
+wanted = items[current].file;
+frame.src = wanted;
+setHash();
 const nav = $('[data-nav]');
 let lastY = scrollY;
 addEventListener('scroll', () => {
