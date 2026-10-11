@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Swipe actions</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+small { display: block; margin-top: 12px; color: var(--muted); text-align: center; }
+</style>
+<style id="effect">
+.swl { width: min(420px, 92vw); list-style: none; padding: 0; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); }
+.swl li { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+.swl li:last-child { border-bottom: 0; }
+.swl__actions { position: absolute; inset: 0 0 0 auto; display: flex; }
+.swl__actions button { display: grid; place-items: center; width: 80px; border: 0; color: #fff; font: 700 14px/1 system-ui, sans-serif; cursor: pointer; transition: width .25s cubic-bezier(.2, 1, .3, 1); }
+.swl__archive { background: #4f6bff; }
+.swl__delete { background: #ff4d4d; }
+.swl li.is-full .swl__archive { width: 0; overflow: hidden; }
+.swl li.is-full .swl__delete { width: var(--full, 160px); }
+.swl__row { position: relative; z-index: 1; display: flex; gap: 12px; align-items: center; padding: 14px 16px; background: var(--panel); transform: translateX(var(--x, 0px)); touch-action: pan-y; cursor: grab; transition: transform .4s cubic-bezier(.2, 1, .3, 1); }
+.swl__row.is-dragging { transition: none; }
+.swl__row b { display: block; }
+.swl__row p { color: var(--muted); font-size: 14px; }
+.swl__dot { width: 40px; height: 40px; border-radius: 50%; flex: none; }
+</style>
+</head>
+<body>
+<div>
+  <ul class="swl" data-swl></ul>
+  <small>Swipe a row left; a long swipe deletes it</small>
+</div>
+<script>
+const MAIL = [['Ola', 'Picnic on Saturday?'], ['Marek', 'Who has the tent?'], ['Anna', 'Thanks for yesterday!'], ['Piotr', 'Photos from the trip'], ['Kasia', 'Movie night next week']];
+const list = document.querySelector('[data-swl]');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const OPEN = -160;
+MAIL.forEach(([from, subject], i) => {
+  const li = document.createElement('li');
+  li.innerHTML = `<div class="swl__actions"><button class="swl__archive" type="button">Archive</button><button class="swl__delete" type="button">Delete</button></div><div class="swl__row" tabindex="0"><span class="swl__dot" style="background:hsl(${i * 60} 70% 55%)"></span><div><b>${from}</b><p>${subject}</p></div></div>`;
+  list.append(li);
+  const row = li.querySelector('.swl__row');
+  let x = 0, drag = null;
+  const set = (v) => { x = v; row.style.setProperty('--x', `${v}px`); li.classList.toggle('is-full', v < -li.offsetWidth * .6); li.style.setProperty('--full', `${-v}px`); };
+  const remove = async () => {
+    const h = li.offsetHeight;
+    if (!reduce) { row.classList.remove('is-dragging'); set(-li.offsetWidth); await new Promise((r) => setTimeout(r, 200)); await li.animate([{ height: `${h}px` }, { height: '0px' }], { duration: 260, easing: 'ease-in' }).finished; }
+    li.remove();
+  };
+  li.querySelector('.swl__delete').addEventListener('click', remove);
+  li.querySelector('.swl__archive').addEventListener('click', remove);
+  row.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, start: x, moved: false }; row.setPointerCapture(e.pointerId); row.classList.add('is-dragging'); });
+  row.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    let v = drag.start + (e.clientX - drag.x);
+    if (v > 0) v = v * .25;
+    drag.moved = drag.moved || Math.abs(e.clientX - drag.x) > 4;
+    set(v);
+  });
+  row.addEventListener('pointerup', () => {
+    if (!drag) return;
+    drag = null;
+    row.classList.remove('is-dragging');
+    if (li.classList.contains('is-full')) { remove(); return; }
+    set(x < OPEN / 2 ? OPEN : 0);
+  });
+  row.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') set(OPEN); if (e.key === 'ArrowRight' || e.key === 'Escape') set(0); if (e.key === 'Delete' || e.key === 'Backspace') remove(); });
+});
+</script>
+</body>
+</html>

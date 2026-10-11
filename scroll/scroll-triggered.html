@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Scroll-triggered animations</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 60vh 20px; display: grid; gap: 16vh; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.tile { aspect-ratio: 1; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); display: grid; place-items: center; font-weight: 700; }
+.card { padding: 28px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+.card h2 { font-size: 28px; }
+.card p { color: var(--muted); }
+</style>
+<style id="effect">
+[data-inview] { transition: opacity .7s cubic-bezier(.2, .8, .2, 1), transform .9s cubic-bezier(.2, .9, .25, 1.15); transition-delay: calc(var(--i, 0) * 80ms); }
+[data-inview="up"]:not(.is-in) { opacity: 0; transform: translateY(48px); }
+[data-inview="scale"]:not(.is-in) { opacity: 0; transform: scale(.7); }
+[data-inview="left"]:not(.is-in) { opacity: 0; transform: translateX(-60px) rotate(-3deg); }
+[data-inview="flip"]:not(.is-in) { opacity: 0; transform: perspective(800px) rotateX(55deg); transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: reduce) { [data-inview] { transition: none; opacity: 1 !important; transform: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <article class="card" data-inview="up"><h2>Fade up</h2><p>Animates every time it enters the viewport, and resets when it leaves.</p></article>
+  <div class="grid">
+    <div class="tile" data-inview="scale" style="--i:0">1</div><div class="tile" data-inview="scale" style="--i:1">2</div><div class="tile" data-inview="scale" style="--i:2">3</div>
+    <div class="tile" data-inview="scale" style="--i:3">4</div><div class="tile" data-inview="scale" style="--i:4">5</div><div class="tile" data-inview="scale" style="--i:5">6</div>
+  </div>
+  <article class="card" data-inview="left" data-once><h2>Slide in, once</h2><p>Add data-once to keep it visible after the first reveal.</p></article>
+  <article class="card" data-inview="flip"><h2>Flip up</h2><p>A perspective rotation from the bottom edge.</p></article>
+</main>
+<script>
+const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+  if (e.isIntersecting) { e.target.classList.add('is-in'); if (e.target.hasAttribute('data-once')) io.unobserve(e.target); }
+  else e.target.classList.remove('is-in');
+}), { rootMargin: '0px 0px -12% 0px' });
+document.querySelectorAll('[data-inview]').forEach((el) => io.observe(el));
+</script>
+</body>
+</html>

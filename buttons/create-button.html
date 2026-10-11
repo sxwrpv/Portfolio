@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Create button expanding into a menu</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+</style>
+<style id="effect">
+.create { position: relative; width: 320px; height: 300px; display: grid; place-items: center; }
+.create__btn { position: relative; z-index: 2; display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 20px; border: 0; border-radius: 24px; background: var(--text); color: var(--bg); font: 700 16px/1 system-ui, sans-serif; cursor: pointer; transition: opacity .2s; }
+.create__panel { position: absolute; inset: 0; z-index: 3; padding: 14px; border-radius: 22px; background: var(--panel); border: 1px solid var(--line); display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-content: start; clip-path: inset(var(--t) var(--r) var(--b) var(--l) round 24px); visibility: hidden; }
+.create__panel.is-open { visibility: visible; }
+.create__head { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 4px 4px 8px; font-weight: 700; }
+.create__head button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--line); color: var(--text); cursor: pointer; }
+.create__opt { display: grid; gap: 6px; justify-items: center; padding: 14px 6px; border-radius: 14px; border: 0; background: transparent; color: var(--text); font: 600 13px/1.2 system-ui, sans-serif; cursor: pointer; opacity: 0; transform: translateY(10px) scale(.9); }
+.create__opt:hover { background: var(--line); }
+.create__opt span { font-size: 22px; }
+.create__panel.is-open .create__opt { opacity: 1; transform: none; transition: opacity .3s, transform .45s cubic-bezier(.2, 1.4, .3, 1); transition-delay: calc(120ms + var(--i) * 35ms); }
+</style>
+</head>
+<body>
+<div class="create">
+  <button class="create__btn" type="button" data-open aria-expanded="false" aria-controls="create-panel">＋ Create</button>
+  <div class="create__panel" id="create-panel" data-panel role="dialog" aria-label="Create">
+    <div class="create__head">Create new <button type="button" data-close aria-label="Close">×</button></div>
+  </div>
+</div>
+<script>
+const OPTIONS = [['📄', 'Document'], ['📊', 'Sheet'], ['🖼', 'Image'], ['🎞', 'Video'], ['📁', 'Folder'], ['🔗', 'Link'], ['🗒', 'Note'], ['📅', 'Event'], ['✉', 'Email']];
+const panel = document.querySelector('[data-panel]');
+const btn = document.querySelector('[data-open]');
+OPTIONS.forEach(([icon, name], i) => {
+  const o = document.createElement('button');
+  o.type = 'button';
+  o.className = 'create__opt';
+  o.style.setProperty('--i', i);
+  o.innerHTML = `<span aria-hidden="true">${icon}</span>${name}`;
+  panel.append(o);
+});
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const insets = () => {
+  const p = panel.getBoundingClientRect(), b = btn.getBoundingClientRect();
+  return [b.top - p.top, p.right - b.right, p.bottom - b.bottom, b.left - p.left].map((v) => `${v}px`);
+};
+const setClip = ([t, r, b, l]) => Object.entries({ '--t': t, '--r': r, '--b': b, '--l': l }).forEach(([k, v]) => panel.style.setProperty(k, v));
+const animateClip = (from, to) => {
+  const kf = [from, to].map(([t, r, b, l]) => ({ clipPath: `inset(${t} ${r} ${b} ${l} round 24px)` }));
+  return panel.animate(kf, { duration: reduce ? 0 : 520, easing: 'cubic-bezier(.2, .9, .25, 1)', fill: 'forwards' });
+};
+const ZERO = ['0px', '0px', '0px', '0px'];
+async function open() {
+  btn.setAttribute('aria-expanded', 'true');
+  panel.classList.add('is-open');
+  setClip(ZERO);
+  animateClip(insets(), ZERO);
+  btn.style.opacity = 0;
+  panel.querySelector('.create__opt').focus();
+}
+async function close() {
+  btn.setAttribute('aria-expanded', 'false');
+  btn.style.opacity = 1;
+  await animateClip(ZERO, insets()).finished;
+  panel.classList.remove('is-open');
+  panel.getAnimations().forEach((a) => a.cancel());
+  btn.focus();
+}
+btn.addEventListener('click', open);
+panel.querySelector('[data-close]').addEventListener('click', close);
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel.classList.contains('is-open')) close(); });
+</script>
+</body>
+</html>

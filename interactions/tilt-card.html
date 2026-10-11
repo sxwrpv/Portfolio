@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Tilt card</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --text: #f4f4f5; --muted: #a1a1aa; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; gap: 40px; grid-auto-flow: column; padding: 24px; background: radial-gradient(90% 70% at 50% 20%, #23202e, var(--bg)); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+@media (max-width: 700px) { body { grid-auto-flow: row; } }
+</style>
+<style id="effect">
+.tilt { perspective: 900px; }
+.tilt__card { position: relative; width: 280px; height: 380px; border-radius: 22px; padding: 22px; display: grid; align-content: end; gap: 6px; color: #fff; transform-style: preserve-3d; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); box-shadow: 0 30px 60px rgba(0, 0, 0, .5); will-change: transform; }
+.tilt__card b { font: 800 26px/1.1 system-ui, sans-serif; transform: translateZ(40px); }
+.tilt__card span { opacity: .8; transform: translateZ(25px); }
+.tilt__glare { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, .35), transparent 55%); opacity: var(--go, 0); transition: opacity .3s; mix-blend-mode: overlay; }
+</style>
+</head>
+<body>
+<div class="tilt"><div class="tilt__card" data-tilt style="background:linear-gradient(150deg,#ffb36b,#a8324a)"><span class="tilt__glare" aria-hidden="true"></span><span>Premium</span><b>Unlimited daydreams</b></div></div>
+<div class="tilt"><div class="tilt__card" data-tilt style="background:linear-gradient(150deg,#7ad0ff,#273c8f)"><span class="tilt__glare" aria-hidden="true"></span><span>Starter</span><b>One bright idea</b></div></div>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.querySelectorAll('[data-tilt]').forEach((card) => {
+  const s = { rx: 0, ry: 0, vx: 0, vy: 0, tx: 0, ty: 0 };
+  let raf = null;
+  const tick = () => {
+    s.vx += (-180 * (s.rx - s.tx) - 16 * s.vx) / 60; s.rx += s.vx / 60;
+    s.vy += (-180 * (s.ry - s.ty) - 16 * s.vy) / 60; s.ry += s.vy / 60;
+    card.style.setProperty('--rx', `${s.rx}deg`);
+    card.style.setProperty('--ry', `${s.ry}deg`);
+    if (Math.abs(s.rx - s.tx) + Math.abs(s.ry - s.ty) + Math.abs(s.vx) + Math.abs(s.vy) > .01) raf = requestAnimationFrame(tick); else raf = null;
+  };
+  const go = () => { if (!raf) raf = requestAnimationFrame(tick); };
+  card.addEventListener('pointermove', (e) => {
+    if (reduce) return;
+    const r = card.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+    s.ty = (px - .5) * 24;
+    s.tx = (.5 - py) * 24;
+    card.style.setProperty('--gx', `${px * 100}%`);
+    card.style.setProperty('--gy', `${py * 100}%`);
+    card.style.setProperty('--go', 1);
+    go();
+  });
+  card.addEventListener('pointerleave', () => { s.tx = 0; s.ty = 0; card.style.setProperty('--go', 0); go(); });
+});
+</script>
+</body>
+</html>

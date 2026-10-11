@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Hide header on scroll</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, sans-serif; }
+main { max-width: 680px; margin: 0 auto; padding: 120px 20px 60vh; display: grid; gap: 18px; }
+main p { color: var(--muted); }
+main h1 { font-size: 40px; line-height: 1.1; }
+.ph { height: 220px; border-radius: 12px; background: linear-gradient(135deg, #2b2b31, #1a1a1e); }
+</style>
+<style id="effect">
+.site-header {
+  position: fixed; inset: 0 0 auto; z-index: 10; display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 20px;
+  background: rgba(14, 14, 16, .82); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line);
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .3s;
+}
+.site-header.is-hidden { transform: translateY(-100%); }
+.site-header.is-scrolled { box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
+.site-header a { color: var(--text); text-decoration: none; font-weight: 700; }
+.site-header nav { display: flex; gap: 18px; color: var(--muted); }
+.site-header:focus-within { transform: none; }
+@media (prefers-reduced-motion: reduce) { .site-header { transition: none; } }
+</style>
+</head>
+<body>
+<header class="site-header" data-hide-header><a href="#">BRAND</a><nav><span>Work</span><span>Pricing</span><span>Contact</span></nav></header>
+<main>
+  <h1>Scroll down to hide the header, scroll up to bring it back.</h1>
+  <p>The header stays visible near the top of the page and whenever keyboard focus is inside it.</p>
+  <div class="ph"></div><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam.</p>
+  <div class="ph"></div><p>Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris.</p>
+  <div class="ph"></div><p>Fusce nec tellus sed augue semper porta. Mauris massa. Vestibulum lacinia arcu eget nulla.</p>
+  <div class="ph"></div>
+</main>
+<script>
+const header = document.querySelector('[data-hide-header]');
+let last = scrollY;
+let travel = 0;
+const THRESHOLD = 12;
+addEventListener('scroll', () => {
+  const y = scrollY;
+  const dy = y - last;
+  last = y;
+  travel = Math.sign(dy) === Math.sign(travel) ? travel + dy : dy;
+  header.classList.toggle('is-scrolled', y > 8);
+  if (y < 80) header.classList.remove('is-hidden');
+  else if (travel > THRESHOLD) header.classList.add('is-hidden');
+  else if (travel < -THRESHOLD) header.classList.remove('is-hidden');
+}, { passive: true });
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Scroll zoom hero</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --text: #f4f4f5; --muted: #a1a1aa; }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, sans-serif; }
+.after { position: relative; z-index: 1; max-width: 680px; margin: 0 auto; padding: 10vh 20px 80vh; display: grid; gap: 16px; background: var(--bg); }
+.after p { color: var(--muted); }
+</style>
+<style id="effect">
+.zhero { position: relative; height: 200vh; }
+.zhero__stage { position: sticky; top: 0; height: 100vh; overflow: hidden; display: grid; place-items: center; }
+.zhero__bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(60% 50% at 50% 70%, #ff9a5a 0, transparent 70%), linear-gradient(#1a2a4a, #6d3b5c 55%, #ff8a4c 75%, #2a1a14 76%, #120c0a);
+  transform: scale(calc(1 + var(--p, 0) * .6)); filter: blur(calc(var(--p, 0) * 14px)); opacity: calc(1 - var(--p, 0) * .85);
+}
+.zhero__title { position: relative; text-align: center; font: 900 clamp(44px, 9vw, 120px)/.95 system-ui, sans-serif; letter-spacing: -.03em; transform: translateY(calc(var(--p, 0) * -18vh)) scale(calc(1 - var(--p, 0) * .2)); opacity: calc(1 - var(--p, 0) * 1.4); }
+</style>
+</head>
+<body>
+<section class="zhero" data-zhero>
+  <div class="zhero__stage">
+    <div class="zhero__bg" aria-hidden="true"></div>
+    <h1 class="zhero__title">Into the<br>evening</h1>
+  </div>
+</section>
+<div class="after"><h2>Content continues</h2><p>The background scales up, blurs and fades while the title lifts away. Everything is driven by one progress value.</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p></div>
+<script>
+const hero = document.querySelector('[data-zhero]');
+const update = () => {
+  const r = hero.getBoundingClientRect();
+  const p = Math.min(1, Math.max(0, -r.top / (hero.offsetHeight - innerHeight)));
+  hero.style.setProperty('--p', p.toFixed(4));
+};
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  addEventListener('scroll', () => requestAnimationFrame(update), { passive: true });
+  update();
+}
+</script>
+</body>
+</html>

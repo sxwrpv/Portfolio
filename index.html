@@ -1,0 +1,1447 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>sxwrpv — motion kit</title>
+<meta name="description" content="Motion kit by sxwrpv: 220 анимаций интерфейса и WebGL-сцены, написанные с нуля. Один файл — один эффект.">
+<meta name="theme-color" content="#070708">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<script>document.documentElement.classList.add('js');</script>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #070708;
+  --card: #0f0f11;
+  --ink: #f1f0ec;
+  --soft: #c9c8c3;
+  --muted: #8e8d94;
+  --dim: #55545b;
+  --line: rgba(255, 255, 255, .09);
+  --line-2: rgba(255, 255, 255, .18);
+  --pad: clamp(16px, 4vw, 56px);
+  --max: 1520px;
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; margin: 0; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } @view-transition { navigation: auto; } }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--sans); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; overflow-x: clip; }
+a { color: inherit; }
+img { display: block; max-width: 100%; }
+button { font: inherit; color: inherit; }
+::selection { background: var(--ink); color: var(--bg); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+.wrap { width: min(100% - var(--pad) * 2, var(--max)); margin-inline: auto; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.skip { position: fixed; left: 12px; top: 12px; z-index: 100; padding: 10px 14px; border-radius: 8px; background: var(--ink); color: var(--bg); text-decoration: none; transform: translateY(-160%); transition: transform .3s var(--ease); }
+.skip:focus-visible { transform: none; }
+.label { font: 500 12px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.nav { position: fixed; inset: 0 0 auto; z-index: 50; display: flex; align-items: center; gap: 28px; padding: 20px var(--pad); color: #fff; mix-blend-mode: difference; transition: transform .6s var(--ease); }
+.nav.is-hidden { transform: translateY(-120%); }
+.logo { font: 650 21px/1 var(--sans); letter-spacing: -.035em; text-decoration: none; }
+.nav nav { display: flex; gap: 26px; margin-left: auto; }
+.nav nav a, .lang { position: relative; font: 500 14px/1 var(--sans); text-decoration: none; }
+.nav nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -5px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform .45s var(--ease); }
+.nav nav a:hover::after, .nav nav a[aria-current="page"]::after { transform: scaleX(1); transform-origin: left; }
+.lang { display: inline-flex; gap: 6px; padding: 6px 0; border: 0; background: none; cursor: pointer; }
+.lang span { opacity: .45; transition: opacity .3s; }
+.lang span[aria-current="true"] { opacity: 1; }
+@media (max-width: 760px) { .nav nav a:not([data-keep]) { display: none; } .nav { gap: 18px; padding-block: 16px; } }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 46px; padding: 0 22px; border: 1px solid var(--line-2); border-radius: 999px; background: rgba(12, 12, 14, .35); color: var(--ink); font: 550 15px/1 var(--sans); text-decoration: none; cursor: pointer; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transition: background .35s var(--ease), color .35s var(--ease), border-color .35s var(--ease); }
+.btn:hover { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.btn--solid { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.btn--solid:hover { background: #fff; border-color: #fff; }
+.btn i { font-style: normal; transition: transform .45s var(--ease); }
+.btn:hover i { transform: translateX(3px); }
+main { position: relative; z-index: 1; background: var(--bg); border-radius: 0 0 clamp(20px, 3vw, 40px) clamp(20px, 3vw, 40px); }
+.hero { position: relative; height: 100vh; height: 100svh; min-height: 540px; overflow: hidden; background: #060607; }
+#hero-gl { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: pan-y; }
+.hero::after { content: ""; position: absolute; inset: auto 0 0; z-index: 1; height: 24%; background: linear-gradient(rgba(7, 7, 8, 0), var(--bg)); pointer-events: none; }
+.hero-word { display: none; }
+.hero.no-gl .hero-word { position: absolute; inset: 0; display: grid; place-items: center; font-size: 24vw; font-weight: 700; letter-spacing: -.06em; }
+.hero.no-gl .gl-fallback { display: none; }
+.hero-ui { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; display: flex; align-items: flex-end; justify-content: space-between; gap: 22px 40px; margin-inline: auto; padding-bottom: clamp(22px, 5vh, 52px); will-change: transform, opacity; }
+.hero-ui .label { margin-bottom: 14px; }
+.hero-lead { max-width: 33ch; color: var(--soft); font-size: clamp(16px, 1.3vw, 19px); line-height: 1.5; }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; }
+.js [data-in] { opacity: 0; transform: translateY(18px); transition: opacity 1.1s var(--ease) var(--d, 0s), transform 1.4s var(--ease) var(--d, 0s); }
+.js .ready [data-in] { opacity: 1; transform: none; }
+.intro { padding: clamp(110px, 18vh, 220px) 0 clamp(70px, 11vh, 130px); }
+.intro p { max-width: 23ch; font-size: clamp(30px, 4.7vw, 74px); font-weight: 580; letter-spacing: -.034em; word-spacing: .05em; line-height: 1.04; }
+.js .intro .w { opacity: .14; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 24px; padding-bottom: clamp(110px, 18vh, 220px); }
+.stat { padding-top: 22px; border-top: 1px solid var(--line); }
+.stat b { display: flex; font-size: clamp(56px, 8.6vw, 140px); font-weight: 600; letter-spacing: -.055em; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat .label { display: block; margin-top: 12px; }
+.dg { display: inline-block; height: 1em; overflow: hidden; }
+.dg > span { display: flex; flex-direction: column; transition: transform 1.7s var(--spring, var(--ease)); }
+.dg i { height: 1em; font-style: normal; }
+.sec-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; gap: 22px clamp(24px, 5vw, 80px); padding-bottom: clamp(36px, 7vh, 72px); }
+.h2 { font-size: clamp(60px, 10.5vw, 176px); font-weight: 620; letter-spacing: -.058em; line-height: .86; }
+.sec-head .lead { max-width: 40ch; color: var(--soft); font-size: clamp(16px, 1.25vw, 19px); }
+.sec-head .lead a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 4px; text-decoration-thickness: 1px; transition: text-decoration-color .3s; }
+.sec-head .lead a:hover { text-decoration-color: var(--ink); }
+.split .wm { display: inline-block; overflow: hidden; vertical-align: top; padding: 0 .03em .12em; margin: 0 -.03em -.12em; }
+.js .split .wi { display: inline-block; transform: translateY(112%); transition: transform 1.3s var(--ease) calc(var(--i, 0) * 80ms); }
+.js .split.in .wi { transform: none; }
+.js [data-reveal] { opacity: 0; transform: translateY(30px); transition: opacity 1.1s var(--ease), transform 1.4s var(--ease); }
+.js [data-reveal].in { opacity: 1; transform: none; }
+.scenes { padding-bottom: clamp(40px, 8vh, 90px); }
+.fgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(40px, 6vw, 76px) clamp(14px, 1.6vw, 24px); }
+.card--wide { grid-column: 1 / -1; }
+.media { position: relative; aspect-ratio: 11 / 7; overflow: hidden; border-radius: 16px; background: #000; isolation: isolate; }
+.card--wide .media { aspect-ratio: 2.25 / 1; }
+.media img, .media iframe { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; }
+.media img { object-fit: cover; }
+.media iframe { opacity: 0; background: #000; transition: opacity .9s var(--ease); }
+.media.live iframe { opacity: 1; }
+.media::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); pointer-events: none; }
+.cap { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 8px 16px; align-items: baseline; padding: 20px 2px 0; }
+.cap .n { font: 500 12px/1 var(--mono); color: var(--muted); }
+.cap h3 { font-size: clamp(19px, 1.65vw, 25px); font-weight: 600; letter-spacing: -.025em; line-height: 1.2; }
+.cap p { grid-column: 2 / -1; max-width: 58ch; color: var(--muted); font-size: 15px; }
+.cap .label { grid-column: 2 / -1; }
+.open { position: relative; color: var(--soft); font: 500 14px/1 var(--sans); text-decoration: none; white-space: nowrap; transition: color .3s; }
+.open::after { content: ""; position: absolute; left: 0; right: 0; bottom: -5px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform .45s var(--ease); }
+.open:hover { color: var(--ink); }
+.open:hover::after { transform: scaleX(1); transform-origin: left; }
+.marquee { display: grid; gap: clamp(10px, 1.2vw, 16px); padding: clamp(70px, 12vh, 140px) 0 clamp(100px, 16vh, 190px); overflow: hidden; }
+.row { display: flex; gap: clamp(10px, 1.2vw, 16px); width: max-content; will-change: transform; }
+.tile { position: relative; flex: none; width: clamp(190px, 19vw, 300px); aspect-ratio: 11 / 7; overflow: hidden; border-radius: 10px; background: #111113; }
+.tile img { width: 100%; height: 100%; object-fit: cover; transition: transform 1s var(--ease); }
+.tile:hover img { transform: scale(1.06); }
+.tile span { position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px); overflow: hidden; padding: 6px 10px; border-radius: 999px; background: rgba(8, 8, 9, .66); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: 12.5px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; opacity: 0; transform: translateY(6px); transition: opacity .35s var(--ease), transform .5s var(--ease); }
+.tile:hover span, .tile:focus-visible span { opacity: 1; transform: none; }
+.index { padding-bottom: clamp(110px, 18vh, 220px); }
+.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 clamp(24px, 5vw, 80px); }
+.col > .label { padding-bottom: 16px; }
+.grp { display: grid; grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); gap: 8px 20px; padding: 17px 0 19px; border-top: 1px solid var(--line); }
+.grp > a { align-self: start; padding-top: 5px; text-decoration: none; transition: color .3s; }
+.grp > a:hover { color: var(--ink); }
+.grp > a span { margin-left: 6px; color: var(--dim); }
+.grp ul { display: flex; flex-wrap: wrap; padding: 0; list-style: none; font-size: 16.5px; letter-spacing: -.01em; line-height: 1.6; }
+.grp li:not(:last-child)::after { content: "/"; margin: 0 .5em; color: var(--dim); }
+.grp li a { color: var(--soft); text-decoration: none; transition: color .25s; }
+.grp li a:hover, .grp li a:focus-visible { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.peek { position: fixed; left: 0; top: 0; z-index: 60; width: clamp(220px, 19vw, 300px); aspect-ratio: 11 / 7; overflow: hidden; border-radius: 12px; background: #111113; box-shadow: 0 30px 80px rgba(0, 0, 0, .6); opacity: 0; pointer-events: none; will-change: transform, opacity; }
+.peek img { width: 100%; height: 100%; object-fit: cover; }
+.engine { padding-bottom: clamp(120px, 20vh, 240px); }
+.egrid { display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); gap: clamp(32px, 5vw, 80px); align-items: start; }
+.points { padding: 0; list-style: none; counter-reset: p; }
+.points li { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 6px 0; padding: 22px 0 26px; border-top: 1px solid var(--line); }
+.points li::before { content: "0" counter(p); counter-increment: p; grid-row: span 2; font: 500 12px/2 var(--mono); color: var(--muted); }
+.points b { font-size: clamp(19px, 1.65vw, 24px); font-weight: 600; letter-spacing: -.022em; line-height: 1.3; }
+.points p { grid-column: 2; max-width: 46ch; color: var(--muted); }
+.demo { position: sticky; top: 88px; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--card); }
+#demo-gl { display: block; width: 100%; aspect-ratio: 16 / 10; touch-action: pan-y; }
+.ctrl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px 18px; border-top: 1px solid var(--line); }
+.ctrl p { flex: 1 1 220px; color: var(--muted); font-size: 14px; }
+.sw { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font: 500 12px/1 var(--mono); cursor: pointer; }
+.sw input { width: 26px; height: 26px; padding: 0; overflow: hidden; border: 1px solid var(--line-2); border-radius: 50%; background: none; cursor: pointer; -webkit-appearance: none; appearance: none; }
+.sw input::-webkit-color-swatch-wrapper { padding: 0; }
+.sw input::-webkit-color-swatch { border: 0; border-radius: 50%; }
+.sw input::-moz-color-swatch { border: 0; border-radius: 50%; }
+.demo pre { margin: 0; padding: 18px 20px 20px; overflow-x: auto; border-top: 1px solid var(--line); color: var(--soft); font: 12.5px/1.7 var(--mono); tab-size: 2; }
+.demo pre .k { color: var(--muted); }
+.demo pre .v { color: #e6c9a6; }
+.foot { position: sticky; bottom: 0; z-index: 0; overflow: hidden; padding: clamp(90px, 15vh, 150px) 0 22px; background: #0c0c0e; }
+.foot-in { will-change: transform, opacity; }
+.foot-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 22px; }
+.foot-top p { max-width: 21ch; font-size: clamp(26px, 3.2vw, 46px); font-weight: 580; letter-spacing: -.032em; line-height: 1.08; }
+.foot-word { margin: calc(clamp(34px, 7vh, 80px) - .3em) 0 .09em; font-size: 26vw; font-weight: 680; letter-spacing: -.052em; line-height: 1.05; white-space: nowrap; }
+.foot-word span { display: inline-block; padding-right: .06em; }
+.foot-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 24px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+.foot-row a { color: var(--soft); text-decoration: none; transition: color .3s; }
+.foot-row a:hover { color: var(--ink); }
+@media (max-width: 900px) { .cols, .egrid { grid-template-columns: 1fr; } .col + .col { margin-top: 56px; } .demo { position: relative; top: 0; } }
+@media (max-width: 760px) {
+  .hero-ui { flex-direction: column; align-items: flex-start; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 16px; }
+  .sec-head { grid-template-columns: 1fr; }
+  .fgrid { grid-template-columns: 1fr; }
+  .card--wide .media { aspect-ratio: 11 / 7; }
+  .cap { grid-template-columns: 38px minmax(0, 1fr) auto; }
+  .grp { grid-template-columns: 1fr; gap: 6px; }
+  .points li { grid-template-columns: 40px minmax(0, 1fr); }
+}
+@media (hover: none) { .media iframe { pointer-events: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .js [data-in], .js [data-reveal], .js .split .wi { opacity: 1; transform: none; transition: none; }
+  .js .intro .w { opacity: 1; }
+  .dg > span { transition: none; }
+  .marquee { overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#scenes" data-t="skip">К содержанию</a>
+<header class="nav" data-nav>
+  <a class="logo" href="#top" aria-label="sxwrpv">sxwrpv</a>
+  <nav>
+    <a href="#scenes" data-t="navScenes">Сцены</a>
+    <a href="#index" data-t="navIndex">Индекс</a>
+    <a href="#engine" data-t="navEngine">Движок</a>
+    <a href="charts.html" data-keep data-t="navCharts">Графики</a>
+    <a href="catalog.html" data-keep data-t="navCatalog">Каталог</a>
+  </nav>
+  <button class="lang" type="button" data-lang aria-label="Язык / Language"><span data-l="ru">RU</span><span data-l="en">EN</span></button>
+</header>
+<main>
+  <section class="hero" id="top">
+    <canvas id="hero-gl" aria-hidden="true"></canvas>
+    <p class="hero-word" aria-hidden="true">sxwrpv</p>
+    <div class="hero-ui wrap">
+      <div>
+        <h1 class="sr">sxwrpv — motion kit</h1>
+        <p class="label" data-in data-t="heroKicker">Motion kit — 2026</p>
+        <p class="hero-lead" data-in style="--d: .08s" data-t="heroLead"></p>
+      </div>
+      <div class="btns" data-in style="--d: .16s">
+        <a class="btn" href="#scenes"><span data-t="heroCta1"></span><i aria-hidden="true">↓</i></a>
+        <a class="btn btn--solid" href="catalog.html"><span data-t="heroCta2"></span><i aria-hidden="true">→</i></a>
+      </div>
+    </div>
+  </section>
+  <section class="intro wrap">
+    <p data-words="intro"></p>
+  </section>
+  <section class="stats wrap" data-stats>
+    <div class="stat"><b data-roll="98">98</b><span class="label" data-t="s1"></span></div>
+    <div class="stat"><b data-roll="122">122</b><span class="label" data-t="s2"></span></div>
+    <div class="stat"><b data-roll="28">28</b><span class="label" data-t="s3"></span></div>
+    <div class="stat"><b data-roll="0">0</b><span class="label" data-t="s4"></span></div>
+  </section>
+  <section class="scenes" id="scenes">
+    <div class="wrap sec-head">
+      <h2 class="h2 split" data-t="scenesTitle">Сцены</h2>
+      <p class="lead" data-t="scenesLead"></p>
+    </div>
+    <div class="wrap fgrid" id="featured"></div>
+  </section>
+  <section class="marquee" data-marquee>
+    <h2 class="sr" data-t="marquee"></h2>
+    <div class="row" data-row="0"></div>
+    <div class="row" data-row="1"></div>
+  </section>
+  <section class="index wrap" id="index">
+    <div class="sec-head">
+      <h2 class="h2 split" data-t="indexTitle">Индекс</h2>
+      <p class="lead"><span data-t="indexLead"></span> <a href="catalog.html" data-t="indexCatalog"></a></p>
+    </div>
+    <div class="cols">
+      <div class="col"><h3 class="label" data-ix-head="motion"></h3><div data-ix="motion"></div></div>
+      <div class="col"><h3 class="label" data-ix-head="webgl"></h3><div data-ix="webgl"></div></div>
+    </div>
+  </section>
+  <section class="engine wrap" id="engine">
+    <div class="sec-head">
+      <h2 class="h2 split" data-t="engineTitle">Движок</h2>
+      <p class="lead" data-t="engineLead"></p>
+    </div>
+    <div class="egrid">
+      <ol class="points">
+        <li data-reveal><b data-t="p1t"></b><p data-t="p1d"></p></li>
+        <li data-reveal><b data-t="p2t"></b><p data-t="p2d"></p></li>
+        <li data-reveal><b data-t="p3t"></b><p data-t="p3d"></p></li>
+        <li data-reveal><b data-t="p4t"></b><p data-t="p4d"></p></li>
+      </ol>
+      <figure class="demo" data-reveal>
+        <canvas id="demo-gl" aria-hidden="true"></canvas>
+        <div class="ctrl">
+          <p data-t="demoCap"></p>
+          <label class="sw">uA<input type="color" value="#ff5a36" data-u="uA"></label>
+          <label class="sw">uB<input type="color" value="#2b3dff" data-u="uB"></label>
+          <label class="sw">uC<input type="color" value="#f3e9dc" data-u="uC"></label>
+        </div>
+        <pre><code><span class="k">uniform</span> <span class="k">vec3</span> uA, uB, uC;
+
+<span class="k">void</span> main() {
+  <span class="k">vec2</span> p = centered() * 1.3;
+  <span class="k">float</span> t = uTime * .15;
+  <span class="k">for</span> (<span class="k">float</span> i = 1.; i &lt; 6.; i++)
+    p += .5 / i * sin(i * p.yx + t * i + <span class="k">vec2</span>(0, 1.7));
+  <span class="k">vec3</span> col = okMix(uA, uB, .5 + .5 * sin(p.x));
+  col = okMix(col, uC, smoothstep(-.4, 1., sin(p.y * 1.2)));
+  o = <span class="k">vec4</span>(col + grain(gl_FragCoord.xy, uTime) * .03, 1);
+}
+
+shader({ uniforms: { uA: <span class="v" data-hex="uA">'#ff5a36'</span>, uB: <span class="v" data-hex="uB">'#2b3dff'</span>, uC: <span class="v" data-hex="uC">'#f3e9dc'</span> } });</code></pre>
+      </figure>
+    </div>
+  </section>
+</main>
+<footer class="foot">
+  <div class="wrap foot-in" data-foot>
+    <div class="foot-top">
+      <p data-t="footLead"></p>
+      <a class="btn btn--solid" href="catalog.html"><span data-t="footCta"></span><i aria-hidden="true">→</i></a>
+    </div>
+    <p class="foot-word" aria-hidden="true"><span>sxwrpv</span></p>
+    <div class="foot-row">
+      <span>© 2026 sxwrpv</span>
+      <span data-t="footNote"></span>
+      <a href="#top"><span data-t="toTop"></span> ↑</a>
+    </div>
+  </div>
+</footer>
+<div class="peek" aria-hidden="true"><img alt=""></div>
+<script type="x-shader/x-fragment" id="hero-scene">
+#define PI 3.14159265
+#define TAU 6.28318531
+vec2 centered() { return (gl_FragCoord.xy * 2. - uRes) / uRes.y; }
+vec2 cover(vec2 uv, vec2 box, vec2 img) { float r = (box.x / box.y) / (img.x / img.y); return r > 1. ? vec2(uv.x, (uv.y - .5) / r + .5) : vec2((uv.x - .5) * r + .5, uv.y); }
+mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, s, -s, c); }
+float sat(float x) { return clamp(x, 0., 1.); }
+float luma(vec3 c) { return dot(c, vec3(.2126, .7152, .0722)); }
+vec3 pal(float t, vec3 a, vec3 b, vec3 c, vec3 d) { return a + b * cos(TAU * (c * t + d)); }
+vec3 aces(vec3 x) { return clamp((x * (2.51 * x + .03)) / (x * (2.43 * x + .59) + .14), 0., 1.); }
+vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(mod(h * 6. + vec3(0, 4, 2), 6.) - 3.) - 1., 0., 1.); return v * mix(vec3(1), k, s); }
+float sdSeg(vec2 p, vec2 a, vec2 b) { vec2 pa = p - a, ba = b - a; return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0., 1.)); }
+float sdRect(vec2 p, vec2 b, float r) { vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
+vec3 toLin(vec3 c) { return pow(max(c, 0.), vec3(2.2)); }
+vec3 toSrgb(vec3 c) { c = max(c, 0.); return mix(c * 12.92, 1.055 * pow(c, vec3(1. / 2.4)) - .055, step(.0031308, c)); }
+vec3 acesFit(vec3 c) {
+  c = mat3(.59719, .076, .0284, .35458, .90834, .13383, .04823, .01566, .83777) * c;
+  c = (c * (c + .0245786) - .000090537) / (c * (.983729 * c + .432951) + .238081);
+  return clamp(mat3(1.60475, -.10208, -.00327, -.53108, 1.10813, -.07276, -.07367, -.00605, 1.07602) * c, 0., 1.);
+}
+vec3 tonemap(vec3 c) {
+  c = mat3(.842479, .0423282, .0423757, .0784336, .878469, .0784336, .0792237, .0791661, .879143) * max(c, 1e-10);
+  c = (clamp(log2(c), -12.47393, 4.026069) + 12.47393) / 16.5;
+  vec3 c2 = c * c, c4 = c2 * c2;
+  c = 15.5 * c4 * c2 - 40.14 * c4 * c + 31.96 * c4 - 6.868 * c2 * c + .4298 * c2 + .1191 * c - .00232;
+  float l = dot(c, vec3(.2126, .7152, .0722));
+  c = pow(max(c, 0.), vec3(1.25));
+  c = l + 1.2 * (c - l);
+  return clamp(mat3(1.196879, -.0528969, -.0529716, -.0980209, 1.151903, -.0980435, -.0990297, -.0989612, 1.151074) * c, 0., 1.);
+}
+vec3 okLab(vec3 c) {
+  vec3 l = mat3(.4122214708, .2119034982, .0883024619, .5363325363, .6806995451, .2817188376, .0514459929, .1073969566, .6299787005) * c;
+  l = sign(l) * pow(abs(l), vec3(1. / 3.));
+  return mat3(.2104542553, 1.9779984951, .0259040371, .7936177850, -2.4285922050, .7827717662, -.0040720468, .4505937099, -.8086757660) * l;
+}
+vec3 okRgb(vec3 c) {
+  vec3 l = mat3(1., 1., 1., .3963377774, -.1055613458, -.0894841775, .2158037573, -.0638541728, -1.2914855480) * c;
+  return mat3(4.0767416621, -1.2684380046, -.0041960863, -3.3077115913, 2.6097574011, -.7034186147, .2309699292, -.3413193965, 1.7076147010) * (l * l * l);
+}
+vec3 okMix(vec3 a, vec3 b, float t) { return toSrgb(okRgb(mix(okLab(toLin(a)), okLab(toLin(b)), t))); }
+vec3 knee(vec3 c) { vec3 e = max(c - .8, 0.); return min(c, .8) + .2 * (1. - exp(-e / .2)); }
+
+float softbox(vec2 p, vec2 b, float r, float blur) { return smoothstep(blur, -blur, sdRect(p, b, r)); }
+vec3 studio(vec3 d, float rough) {
+  float b = .012 + rough * .45, y = d.y, az = atan(d.x, d.z), k = 1. / (1. + rough * 2.5);
+  vec3 c = mix(vec3(.02), vec3(.075), smoothstep(-.7, 0., y));
+  c = mix(c, vec3(.14), smoothstep(0., .85, y));
+  c += vec3(.5) * exp(-abs(y) * 30. / (1. + rough * 12.)) * .6;
+  if (y > .05) c += vec3(4.2) * k * softbox(d.xz / y, vec2(.75, .5), .12, b * 2.);
+  c += vec3(7.) * k * softbox(vec2(az - .75, y - .12), vec2(.07, .5), .05, b);
+  c += vec3(3.2) * k * softbox(vec2(az + 1.05, y - .05), vec2(.05, .42), .04, b);
+  c += vec3(2.4) * k * softbox(vec2(abs(az) - 2.55, y - .2), vec2(.06, .36), .05, b);
+  return c;
+}
+vec3 studio(vec3 d) { return studio(d, 0.); }
+uniform sampler2D uText;
+uniform float uScroll;
+uniform float uLift;
+uniform float uGem;
+mat3 R;
+vec3 C;
+vec2 P;
+float F;
+const float CAM = 7.4, BACK = 2.8;
+const vec3 IOR = vec3(2.385, 2.42, 2.465);
+mat3 rx(float a) { float c = cos(a), s = sin(a); return mat3(1, 0, 0, 0, c, s, 0, -s, c); }
+mat3 ry(float a) { float c = cos(a), s = sin(a); return mat3(c, 0, -s, 0, 1, 0, s, 0, c); }
+mat3 rz(float a) { float c = cos(a), s = sin(a); return mat3(c, s, 0, -s, c, 0, 0, 0, 1); }
+float gem(vec3 p) {
+  const float S = TAU / 8.;
+  const vec2 w = vec2(.92387953, .38268343);
+  float r = length(p.xz), a = abs(mod(atan(p.z, p.x) + S * .5, S) - S * .5);
+  vec3 q = vec3(r * cos(a), p.y, r * sin(a));
+  float d = max(r - 1., max(p.y - .295, -p.y - .9));
+  d = max(d, dot(q, vec3(.566, .824, 0)) - .566);
+  d = max(d, dot(q, vec3(.358 * w.x, .934, .358 * w.y)) - .48);
+  d = max(d, dot(q, vec3(.669 * w.x, .743, .669 * w.y)) - .676);
+  d = max(d, dot(q, vec3(.653, -.757, 0)) - .668);
+  return max(d, dot(q, vec3(.669 * w.x, -.743, .669 * w.y)) - .69);
+}
+float map(vec3 p) { return gem(R * (p - C)); }
+vec3 calcN(vec3 p) { const vec2 e = vec2(1, -1) * .0005; return normalize(e.xyy * map(p + e.xyy) + e.yyx * map(p + e.yyx) + e.yxy * map(p + e.yxy) + e.xxx * map(p + e.xxx)); }
+vec2 toUv(vec2 s) { return s * vec2(uRes.y / uRes.x, 1) * .5 + .5; }
+vec3 wall(vec2 s, float m) {
+  vec2 v = s * vec2(.62, 1);
+  vec3 bg = mix(vec3(.0019, .0019, .0022), vec3(.0115, .0111, .0106), exp(-dot(v, v) * 1.15));
+  return mix(bg, vec3(2.45, 2.42, 2.36), m);
+}
+float glint(vec3 e) {
+  return pow(max(dot(e, normalize(vec3(.48, .62, .62))), 0.), 1500.) + .8 * pow(max(dot(e, normalize(vec3(-.7, .45, .55))), 0.), 1500.)
+    + pow(max(dot(e, normalize(vec3(.15, .93, -.33))), 0.), 1200.) + .6 * pow(max(dot(e, normalize(vec3(-.3, -.2, .93))), 0.), 1700.)
+    + .7 * pow(max(dot(e, normalize(vec3(.85, -.1, .5))), 0.), 1400.) + .5 * pow(max(dot(e, normalize(vec3(-.55, .8, -.2))), 0.), 1300.);
+}
+vec3 room(vec3 d) {
+  float az = atan(d.x, d.z);
+  vec3 c = vec3(.008) + vec3(.03) * smoothstep(-.3, .9, d.y) + vec3(1.35) * smoothstep(.3, .72, d.z) * (1. - .9 * smoothstep(.9, .975, d.z)) * (.55 + .45 * smoothstep(-.5, .6, d.y));
+  c += vec3(6., 5.7, 5.3) * softbox(vec2(az - 1.05, d.y - .12), vec2(.11, .55), .06, .025);
+  c += vec3(4.4, 4.7, 5.2) * softbox(vec2(az + 1.12, d.y - .05), vec2(.09, .48), .06, .025);
+  if (d.y > .05) c += vec3(3.6) * softbox(d.xz / d.y, vec2(.85, .55), .2, .06);
+  return c;
+}
+vec4 wallHit(vec3 q, vec3 e, float lod) {
+  float w = smoothstep(0., -.2, e.z);
+  if (w <= 0.) return vec4(0);
+  vec2 s = (q.xy + e.xy * (-BACK - q.z) / min(e.z, -1e-3)) * F / (CAM + BACK);
+  return vec4(wall(s, textureLod(uText, toUv(s - P), lod).r), w);
+}
+vec3 exitCol(vec3 q, vec3 er, vec3 eg, vec3 eb, float lod) {
+  vec3 rm = room(eg) + vec3(glint(er), glint(eg), glint(eb)) * 90.;
+  vec4 a = wallHit(q, er, lod), b = wallHit(q, eg, lod), c = wallHit(q, eb, lod);
+  return vec3(mix(rm.r, a.r, a.a), mix(rm.g, b.g, b.a), mix(rm.b, c.b, c.a));
+}
+float inside(vec3 q, vec3 d) {
+  float t = .004;
+  for (int i = 0; i < 44; i++) {
+    float h = -map(q + d * t);
+    if (h < .0005) break;
+    t += max(h, .0025);
+  }
+  return t;
+}
+vec3 shade(vec3 p, vec3 rd) {
+  vec3 n = calcN(p);
+  float fr = .172 + .828 * pow(1. - clamp(dot(n, -rd), 0., 1.), 5.);
+  vec3 r = reflect(rd, n);
+  vec3 col = (room(r) + glint(r) * 90.) * fr;
+  vec3 d = refract(rd, n, 1. / IOR.g), q = p - n * .0015;
+  float k = 1. - fr;
+  for (int j = 0; j < 4; j++) {
+    q += d * inside(q, d);
+    vec3 N = calcN(q), eg = refract(d, -N, IOR.g);
+    if (dot(eg, eg) > 0.) {
+      vec3 er = refract(d, -N, IOR.r), eb = refract(d, -N, IOR.b);
+      if (dot(er, er) == 0.) er = eg;
+      if (dot(eb, eb) == 0.) eb = eg;
+      float f2 = .172 + .828 * pow(1. - clamp(dot(eg, N), 0., 1.), 5.);
+      col += exitCol(q, er, eg, eb, 1.2 + float(j) * 1.2) * k * (1. - f2);
+      k *= f2;
+    }
+    d = reflect(d, -N);
+  }
+  return col + room(d) * .4 * k;
+}
+void main() {
+  vec2 uv = centered();
+  F = uGem * CAM;
+  float t = uTime, spin = t * .3 - 2.4 * exp(-t * 1.25);
+  R = ry(spin + (uMouse.x - .5) * 1.3 + uScroll * 2.2) * rx(.5 + .12 * sin(t * .43) - (uMouse.y - .5) * .7) * rz(.18 * sin(t * .29 + .7));
+  C = vec3(0, .035 * sin(t * .7) + uScroll * .9 + uLift * CAM / F, 0);
+  vec3 ro = vec3(0, 0, CAM), rd = normalize(vec3(uv, -F));
+  P = (uMouse - .5) * vec2(-.035, -.025);
+  vec3 col = wall(uv, texture(uText, toUv(uv - P)).r);
+  vec3 oc = ro - C;
+  float bq = dot(oc, rd), h = bq * bq - dot(oc, oc) + 1.06;
+  if (h > 0.) {
+    h = sqrt(h);
+    float t1 = -bq + h, tt = max(-bq - h, 0.), md = 1e9, mt = tt;
+    bool hit = false;
+    for (int i = 0; i < 110; i++) {
+      float d = map(ro + rd * tt);
+      if (d < md) { md = d; mt = tt; }
+      if (d < .00035) { hit = true; break; }
+      tt += d;
+      if (tt > t1) break;
+    }
+    float cov = hit ? 1. : 1. - smoothstep(0., mt * 2. / (uRes.y * F), md);
+    if (cov > 0.) col = mix(col, shade(ro + rd * (hit ? tt : mt), rd), cov);
+  }
+  o = vec4(col, 1);
+}
+</script>
+<script type="x-shader/x-fragment" id="hero-main">
+#define PI 3.14159265
+#define TAU 6.28318531
+vec2 centered() { return (gl_FragCoord.xy * 2. - uRes) / uRes.y; }
+vec2 cover(vec2 uv, vec2 box, vec2 img) { float r = (box.x / box.y) / (img.x / img.y); return r > 1. ? vec2(uv.x, (uv.y - .5) / r + .5) : vec2((uv.x - .5) * r + .5, uv.y); }
+mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, s, -s, c); }
+float sat(float x) { return clamp(x, 0., 1.); }
+float luma(vec3 c) { return dot(c, vec3(.2126, .7152, .0722)); }
+vec3 pal(float t, vec3 a, vec3 b, vec3 c, vec3 d) { return a + b * cos(TAU * (c * t + d)); }
+vec3 aces(vec3 x) { return clamp((x * (2.51 * x + .03)) / (x * (2.43 * x + .59) + .14), 0., 1.); }
+vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(mod(h * 6. + vec3(0, 4, 2), 6.) - 3.) - 1., 0., 1.); return v * mix(vec3(1), k, s); }
+float sdSeg(vec2 p, vec2 a, vec2 b) { vec2 pa = p - a, ba = b - a; return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0., 1.)); }
+float sdRect(vec2 p, vec2 b, float r) { vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
+vec3 toLin(vec3 c) { return pow(max(c, 0.), vec3(2.2)); }
+vec3 toSrgb(vec3 c) { c = max(c, 0.); return mix(c * 12.92, 1.055 * pow(c, vec3(1. / 2.4)) - .055, step(.0031308, c)); }
+vec3 acesFit(vec3 c) {
+  c = mat3(.59719, .076, .0284, .35458, .90834, .13383, .04823, .01566, .83777) * c;
+  c = (c * (c + .0245786) - .000090537) / (c * (.983729 * c + .432951) + .238081);
+  return clamp(mat3(1.60475, -.10208, -.00327, -.53108, 1.10813, -.07276, -.07367, -.00605, 1.07602) * c, 0., 1.);
+}
+vec3 tonemap(vec3 c) {
+  c = mat3(.842479, .0423282, .0423757, .0784336, .878469, .0784336, .0792237, .0791661, .879143) * max(c, 1e-10);
+  c = (clamp(log2(c), -12.47393, 4.026069) + 12.47393) / 16.5;
+  vec3 c2 = c * c, c4 = c2 * c2;
+  c = 15.5 * c4 * c2 - 40.14 * c4 * c + 31.96 * c4 - 6.868 * c2 * c + .4298 * c2 + .1191 * c - .00232;
+  float l = dot(c, vec3(.2126, .7152, .0722));
+  c = pow(max(c, 0.), vec3(1.25));
+  c = l + 1.2 * (c - l);
+  return clamp(mat3(1.196879, -.0528969, -.0529716, -.0980209, 1.151903, -.0980435, -.0990297, -.0989612, 1.151074) * c, 0., 1.);
+}
+vec3 okLab(vec3 c) {
+  vec3 l = mat3(.4122214708, .2119034982, .0883024619, .5363325363, .6806995451, .2817188376, .0514459929, .1073969566, .6299787005) * c;
+  l = sign(l) * pow(abs(l), vec3(1. / 3.));
+  return mat3(.2104542553, 1.9779984951, .0259040371, .7936177850, -2.4285922050, .7827717662, -.0040720468, .4505937099, -.8086757660) * l;
+}
+vec3 okRgb(vec3 c) {
+  vec3 l = mat3(1., 1., 1., .3963377774, -.1055613458, -.0894841775, .2158037573, -.0638541728, -1.2914855480) * c;
+  return mat3(4.0767416621, -1.2684380046, -.0041960863, -3.3077115913, 2.6097574011, -.7034186147, .2309699292, -.3413193965, 1.7076147010) * (l * l * l);
+}
+vec3 okMix(vec3 a, vec3 b, float t) { return toSrgb(okRgb(mix(okLab(toLin(a)), okLab(toLin(b)), t))); }
+vec3 knee(vec3 c) { vec3 e = max(c - .8, 0.); return min(c, .8) + .2 * (1. - exp(-e / .2)); }
+float hash11(float p) { p = fract(p * .1031); p *= p + 33.33; p *= p + p; return fract(p); }
+float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+vec2 hash22(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973)); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.xx + p3.yz) * p3.zy); }
+float hash13(vec3 p3) { p3 = fract(p3 * .1031); p3 += dot(p3, p3.zyx + 31.32); return fract((p3.x + p3.y) * p3.z); }
+vec3 hash33(vec3 p3) { p3 = fract(p3 * vec3(.1031, .1030, .0973)); p3 += dot(p3, p3.yxz + 33.33); return fract((p3.xxy + p3.yxx) * p3.zyx); }
+float grain(vec2 p, float t) { return hash12(p + fract(t * 7.13) * 917.) - .5; }
+uniform sampler2D uScene;
+uniform sampler2D uBloom;
+void main() {
+  vec3 c = mix(texture(uScene, vUv).rgb, texture(uBloom, vUv).rgb / 5., .055);
+  c = tonemap(c) + (hash12(gl_FragCoord.xy + fract(uTime * 7.13) * 917.) - .5) * .02;
+  o = vec4(c, 1);
+}
+</script>
+<script type="x-shader/x-fragment" id="demo-fs">
+#define PI 3.14159265
+#define TAU 6.28318531
+vec2 centered() { return (gl_FragCoord.xy * 2. - uRes) / uRes.y; }
+vec2 cover(vec2 uv, vec2 box, vec2 img) { float r = (box.x / box.y) / (img.x / img.y); return r > 1. ? vec2(uv.x, (uv.y - .5) / r + .5) : vec2((uv.x - .5) * r + .5, uv.y); }
+mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, s, -s, c); }
+float sat(float x) { return clamp(x, 0., 1.); }
+float luma(vec3 c) { return dot(c, vec3(.2126, .7152, .0722)); }
+vec3 pal(float t, vec3 a, vec3 b, vec3 c, vec3 d) { return a + b * cos(TAU * (c * t + d)); }
+vec3 aces(vec3 x) { return clamp((x * (2.51 * x + .03)) / (x * (2.43 * x + .59) + .14), 0., 1.); }
+vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(mod(h * 6. + vec3(0, 4, 2), 6.) - 3.) - 1., 0., 1.); return v * mix(vec3(1), k, s); }
+float sdSeg(vec2 p, vec2 a, vec2 b) { vec2 pa = p - a, ba = b - a; return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0., 1.)); }
+float sdRect(vec2 p, vec2 b, float r) { vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
+vec3 toLin(vec3 c) { return pow(max(c, 0.), vec3(2.2)); }
+vec3 toSrgb(vec3 c) { c = max(c, 0.); return mix(c * 12.92, 1.055 * pow(c, vec3(1. / 2.4)) - .055, step(.0031308, c)); }
+vec3 acesFit(vec3 c) {
+  c = mat3(.59719, .076, .0284, .35458, .90834, .13383, .04823, .01566, .83777) * c;
+  c = (c * (c + .0245786) - .000090537) / (c * (.983729 * c + .432951) + .238081);
+  return clamp(mat3(1.60475, -.10208, -.00327, -.53108, 1.10813, -.07276, -.07367, -.00605, 1.07602) * c, 0., 1.);
+}
+vec3 tonemap(vec3 c) {
+  c = mat3(.842479, .0423282, .0423757, .0784336, .878469, .0784336, .0792237, .0791661, .879143) * max(c, 1e-10);
+  c = (clamp(log2(c), -12.47393, 4.026069) + 12.47393) / 16.5;
+  vec3 c2 = c * c, c4 = c2 * c2;
+  c = 15.5 * c4 * c2 - 40.14 * c4 * c + 31.96 * c4 - 6.868 * c2 * c + .4298 * c2 + .1191 * c - .00232;
+  float l = dot(c, vec3(.2126, .7152, .0722));
+  c = pow(max(c, 0.), vec3(1.25));
+  c = l + 1.2 * (c - l);
+  return clamp(mat3(1.196879, -.0528969, -.0529716, -.0980209, 1.151903, -.0980435, -.0990297, -.0989612, 1.151074) * c, 0., 1.);
+}
+vec3 okLab(vec3 c) {
+  vec3 l = mat3(.4122214708, .2119034982, .0883024619, .5363325363, .6806995451, .2817188376, .0514459929, .1073969566, .6299787005) * c;
+  l = sign(l) * pow(abs(l), vec3(1. / 3.));
+  return mat3(.2104542553, 1.9779984951, .0259040371, .7936177850, -2.4285922050, .7827717662, -.0040720468, .4505937099, -.8086757660) * l;
+}
+vec3 okRgb(vec3 c) {
+  vec3 l = mat3(1., 1., 1., .3963377774, -.1055613458, -.0894841775, .2158037573, -.0638541728, -1.2914855480) * c;
+  return mat3(4.0767416621, -1.2684380046, -.0041960863, -3.3077115913, 2.6097574011, -.7034186147, .2309699292, -.3413193965, 1.7076147010) * (l * l * l);
+}
+vec3 okMix(vec3 a, vec3 b, float t) { return toSrgb(okRgb(mix(okLab(toLin(a)), okLab(toLin(b)), t))); }
+vec3 knee(vec3 c) { vec3 e = max(c - .8, 0.); return min(c, .8) + .2 * (1. - exp(-e / .2)); }
+float hash11(float p) { p = fract(p * .1031); p *= p + 33.33; p *= p + p; return fract(p); }
+float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+vec2 hash22(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973)); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.xx + p3.yz) * p3.zy); }
+float hash13(vec3 p3) { p3 = fract(p3 * .1031); p3 += dot(p3, p3.zyx + 31.32); return fract((p3.x + p3.y) * p3.z); }
+vec3 hash33(vec3 p3) { p3 = fract(p3 * vec3(.1031, .1030, .0973)); p3 += dot(p3, p3.yxz + 33.33); return fract((p3.xxy + p3.yxx) * p3.zyx); }
+float grain(vec2 p, float t) { return hash12(p + fract(t * 7.13) * 917.) - .5; }
+uniform vec3 uA, uB, uC;
+
+void main() {
+  vec2 p = centered() * 1.3;
+  float t = uTime * .15;
+  for (float i = 1.; i < 6.; i++)
+    p += .5 / i * sin(i * p.yx + t * i + vec2(0, 1.7));
+  vec3 col = okMix(uA, uB, .5 + .5 * sin(p.x));
+  col = okMix(col, uC, smoothstep(-.4, 1., sin(p.y * 1.2)));
+  o = vec4(col + grain(gl_FragCoord.xy, uTime) * .03, 1);
+}
+</script>
+<script id="data" type="application/json">{"items": [{"file": "text/rolling-text-button.html", "cat": "text", "src": "motion", "thumb": "_thumbs/text_rolling-text-button.jpg", "title": "Перекатывающаяся подпись кнопки", "title_en": "Rolling text button", "desc": "При наведении подпись уезжает вверх, снизу выезжает копия. Три варианта: целиком, по буквам, от центра. Почти чистый CSS.", "desc_en": "On hover the label rolls up and a copy rolls in from below. Three variants: whole word, per letter, from the centre. Almost pure CSS."}, {"file": "text/number-roll.html", "cat": "text", "src": "motion", "thumb": "_thumbs/text_number-roll.jpg", "title": "Анимированные числа", "title_en": "Animated number", "desc": "Цифры прокручиваются, как в счётчике. Примеры: счётчик, цена за месяц и за год, лайки. Новые разряды появляются отдельно, направление зависит от роста или падения.", "desc_en": "Digits roll like an odometer. Examples: a counter, monthly and yearly prices, likes. New digits enter on their own, direction follows rise or fall."}, {"file": "text/scramble-text.html", "cat": "text", "src": "motion", "thumb": "_thumbs/text_scramble-text.jpg", "title": "Перемешивание букв", "title_en": "Scramble text", "desc": "Текст перебирает случайные символы при смене слова и при наведении: слева направо или от центра.", "desc_en": "Text cycles through random characters when the word changes and on hover, left to right or from the centre."}, {"file": "text/split-text.html", "cat": "text", "src": "motion", "thumb": "_thumbs/text_split-text.jpg", "title": "Текст по словам и буквам", "title_en": "Split text", "desc": "Разбивка на строки, слова и буквы. Эффекты: подъём из-под маски, разлёт букв, волна.", "desc_en": "Splits text into lines, words and letters. Effects: rise from a mask, scattering letters, a wave."}, {"file": "text/typewriter.html", "cat": "text", "src": "motion", "thumb": "_thumbs/text_typewriter.jpg", "title": "Печатная машинка", "title_en": "Typewriter", "desc": "Ровная печать; «живая» печать с паузами и опечатками; смена текста со стиранием до общего начала; обратный отсчёт.", "desc_en": "Steady typing; human typing with pauses and typos; text swaps that erase back to the shared start; a countdown."}, {"file": "text/scroll-word-reveal.html", "cat": "text", "src": "motion", "thumb": "_thumbs/text_scroll-word-reveal.jpg", "title": "Слова проявляются при прокрутке", "title_en": "Scroll word reveal", "desc": "Абзац загорается слово за словом по мере прокрутки.", "desc_en": "A paragraph lights up word by word as you scroll."}, {"file": "text/text-reveal-hover.html", "cat": "text", "src": "motion", "thumb": "_thumbs/text_text-reveal-hover.jpg", "title": "Раскрытие текста при наведении", "title_en": "Reveal text on hover", "desc": "Иконки раскрываются в кнопки с подписью, в заголовке выдвигается скрытое слово. Ширина анимируется через grid 0fr → 1fr.", "desc_en": "Icons expand into labelled buttons, a hidden word slides out of a headline. Width animates through grid 0fr → 1fr."}, {"file": "text/fill-text.html", "cat": "text", "src": "motion", "thumb": "_thumbs/text_fill-text.jpg", "title": "Заливка текста при загрузке", "title_en": "Fill text loader", "desc": "Контурное слово заливается снизу вверх по прогрессу загрузки, рядом процент.", "desc_en": "An outlined word fills from the bottom with loading progress, with a percentage beside it."}, {"file": "text/scroll-text-lines.html", "cat": "text", "src": "motion", "thumb": "_thumbs/text_scroll-text-lines.jpg", "title": "Строки едут при прокрутке", "title_en": "Scroll text lines", "desc": "Крупные строки бегут в разные стороны с разной скоростью, бесконечно.", "desc_en": "Large lines run in opposite directions at different speeds, endlessly."}, {"file": "scroll/hide-header.html", "cat": "scroll", "src": "motion", "thumb": "_thumbs/scroll_hide-header.jpg", "title": "Шапка прячется при прокрутке", "title_en": "Hide header on scroll", "desc": "При прокрутке вниз шапка уезжает, при прокрутке вверх возвращается. Порог от случайных рывков, фокус клавиатуры её держит.", "desc_en": "The header slides away on scroll down and returns on scroll up. A threshold ignores jitter, keyboard focus keeps it visible."}, {"file": "scroll/horizontal-gallery.html", "cat": "scroll", "src": "motion", "thumb": "_thumbs/scroll_horizontal-gallery.jpg", "title": "Горизонтальная галерея на прокрутке", "title_en": "Horizontal scroll gallery", "desc": "Секция прилипает, а карточки едут вбок, пока страница прокручивается вниз. Внизу полоса прогресса.", "desc_en": "The section sticks and the cards move sideways while the page scrolls down. A progress bar runs along the bottom."}, {"file": "scroll/image-reveal.html", "cat": "scroll", "src": "motion", "thumb": "_thumbs/scroll_image-reveal.jpg", "title": "Фото раскрываются шторкой", "title_en": "Scroll image reveal", "desc": "Изображения раскрываются от центра через clip-path и одновременно чуть уменьшаются.", "desc_en": "Images open from the centre with clip-path while scaling down slightly."}, {"file": "scroll/zoom-hero.html", "cat": "scroll", "src": "motion", "thumb": "_thumbs/scroll_zoom-hero.jpg", "title": "Первый экран с приближением", "title_en": "Scroll zoom hero", "desc": "Фон увеличивается, размывается и гаснет, заголовок уходит вверх.", "desc_en": "The background zooms, blurs and fades while the headline moves up."}, {"file": "scroll/parallax.html", "cat": "scroll", "src": "motion", "thumb": "_thumbs/scroll_parallax.jpg", "title": "Параллакс слоёв", "title_en": "Parallax", "desc": "Горы, солнце и заголовок двигаются с разной скоростью и создают глубину.", "desc_en": "Mountains, sun and headline move at different speeds to create depth."}, {"file": "scroll/footer-reveal.html", "cat": "scroll", "src": "motion", "thumb": "_thumbs/scroll_footer-reveal.jpg", "title": "Подвал открывается из-под страницы", "title_en": "Footer reveal", "desc": "Подвал зафиксирован позади, страница уезжает и открывает его, он проявляется и поднимается.", "desc_en": "The footer is fixed behind the page; the page slides away to reveal it as it fades in and rises."}, {"file": "scroll/scroll-highlight.html", "cat": "scroll", "src": "motion", "thumb": "_thumbs/scroll_scroll-highlight.jpg", "title": "Барабан выбора", "title_en": "Scroll highlight", "desc": "Список с прилипанием: пункт в центре увеличен и подсвечен, остальные гаснут. Работает с клавиатуры.", "desc_en": "A snapping list: the centred item grows and lights up, the rest fade. Works with the keyboard."}, {"file": "scroll/scroll-progress.html", "cat": "scroll", "src": "motion", "thumb": "_thumbs/scroll_scroll-progress.jpg", "title": "Прогресс прокрутки", "title_en": "Scroll-linked progress", "desc": "Точная полоса и полоса с пружиной, кольцо для блока со своей прокруткой, проценты прохождения элемента через экран.", "desc_en": "An exact bar and a spring bar, a ring for a scrolling box, and progress of an element through the viewport."}, {"file": "scroll/scroll-triggered.html", "cat": "scroll", "src": "motion", "thumb": "_thumbs/scroll_scroll-triggered.jpg", "title": "Появление при входе в экран", "title_en": "Scroll-triggered animations", "desc": "Подъём, масштаб, сдвиг и переворот при входе в экран. Можно один раз или каждый раз; карточки появляются по очереди.", "desc_en": "Rise, scale, slide and flip when entering the viewport. Once or every time; cards appear in sequence."}, {"file": "scroll/velocity-planes.html", "cat": "scroll", "src": "motion", "thumb": "_thumbs/scroll_velocity-planes.jpg", "title": "Карточки гнутся от скорости прокрутки", "title_en": "Scroll velocity planes", "desc": "Горизонтальная лента в 3D: чем быстрее прокрутка, тем сильнее изгиб, потом всё выпрямляется пружиной.", "desc_en": "A horizontal 3D strip bends harder the faster you scroll, then springs back straight."}, {"file": "scroll/smooth-scroll.html", "cat": "scroll", "src": "motion", "thumb": "_thumbs/scroll_smooth-scroll.jpg", "title": "Плавная инерционная прокрутка", "title_en": "Smooth scroll", "desc": "Прокрутка с инерцией, как в Lenis: колесо, тачпад, клавиши, полоса прогресса, параллакс.", "desc_en": "Inertial scrolling: wheel, trackpad, keys, a progress bar and parallax."}, {"file": "page-transitions/curtains.html", "cat": "page-transitions", "src": "motion", "thumb": "_thumbs/page-transitions_curtains.jpg", "title": "Шторки между страницами", "title_en": "Page transitions", "desc": "10 эффектов: wipe, clip wipe, stagger wipe, blinds, shutter, doors, iris, iris от точки клика, pixels, fade. Закрытие и открытие можно смешивать, шторку можно ограничить одним блоком.", "desc_en": "Ten effects: wipe, clip wipe, stagger wipe, blinds, shutter, doors, iris, iris from the click point, pixels, fade. Mix in and out effects, or limit the curtain to one block."}, {"file": "page-transitions/view-transitions.html", "cat": "page-transitions", "src": "motion", "thumb": "_thumbs/page-transitions_view-transitions.jpg", "title": "View Transitions API", "title_en": "View Transitions", "desc": "Раскрытие кругом, перестановка списка, переключатель, слайдшоу с направлением, карточка, превращающаяся в полный экран. Встроено в браузер.", "desc_en": "Circular reveal, list reorder, a toggle, a directional slideshow, a card that grows to full screen. Built into the browser."}, {"file": "carousel/carousel.html", "cat": "carousel", "src": "motion", "thumb": "_thumbs/carousel_carousel.jpg", "title": "Карусель", "title_en": "Carousel", "desc": "Перетаскивание с инерцией, стрелки, точки с уменьшением по краям, счётчик «3 / 10», автопрокрутка с полосой (пауза при наведении), свободная прокрутка, RTL, ползунок-скраббер.", "desc_en": "Inertial dragging, arrows, dots that shrink at the edges, a \"3 / 10\" counter, autoplay with a bar (pauses on hover), free scroll, RTL, a scrubber."}, {"file": "carousel/carousel-loop.html", "cat": "carousel", "src": "motion", "thumb": "_thumbs/carousel_carousel-loop.jpg", "title": "Бесконечная карусель", "title_en": "Infinite carousel", "desc": "Крутится по кругу без клонов-скачков. Перетаскивание, клавиатура, автопрокрутка с полосой, вертикальный режим.", "desc_en": "Loops endlessly without clone jumps. Dragging, keyboard, autoplay with a bar, vertical mode."}, {"file": "carousel/coverflow.html", "cat": "carousel", "src": "motion", "thumb": "_thumbs/carousel_coverflow.jpg", "title": "Coverflow и эффекты по смещению", "title_en": "Coverflow and offset-linked carousel", "desc": "Объёмная лента: обложки поворачиваются, уходят вглубь. Ещё два режима: масштаб по удалению от центра и параллакс внутри карточки.", "desc_en": "A 3D strip: covers turn and recede. Two more modes: scale by distance from centre and parallax inside the card."}, {"file": "carousel/thumbnails-lightbox.html", "cat": "carousel", "src": "motion", "thumb": "_thumbs/carousel_thumbnails-lightbox.jpg", "title": "Галерея с миниатюрами и лайтбоксом", "title_en": "Thumbnail gallery with lightbox", "desc": "Большое фото с полосой миниатюр; по клику фото вырастает на весь экран и обратно. Стрелки и Esc работают.", "desc_en": "A large photo with a thumbnail strip; click to grow it to full screen and back. Arrows and Esc work."}, {"file": "ticker/ticker.html", "cat": "ticker", "src": "motion", "thumb": "_thumbs/ticker_ticker.jpg", "title": "Бегущая строка", "title_en": "Ticker", "desc": "Варианты: замедление при наведении, перетаскивание с инерцией, скорость от прокрутки страницы, обратное направление, увеличение центрального элемента, вылет за края, вертикальная.", "desc_en": "Variants: slow down on hover, inertial dragging, speed from page scroll, reverse direction, enlarged centre item, overflow past the edges, vertical."}, {"file": "ticker/ticker-hover-text.html", "cat": "ticker", "src": "motion", "thumb": "_thumbs/ticker_ticker-hover-text.jpg", "title": "Бегущий текст в ссылках и курсоре", "title_en": "Ticker hover text and ticker cursor", "desc": "При наведении подпись ссылки заменяется бегущей строкой. Над карточками появляется круглый курсор с бегущей надписью «View».", "desc_en": "On hover a link label turns into a ticker. A round cursor with a running \"View\" label appears over cards."}, {"file": "cursor/cursor-follow.html", "cat": "cursor", "src": "motion", "thumb": "_thumbs/cursor_cursor-follow.jpg", "title": "Курсор с пружиной", "title_en": "Cursor follow with springs", "desc": "Точка и кольцо догоняют указатель с разной упругостью, второй режим — хвост из нескольких кругов.", "desc_en": "A dot and a ring chase the pointer with different springiness; a second mode is a tail of circles."}, {"file": "cursor/magnetic.html", "cat": "cursor", "src": "motion", "thumb": "_thumbs/cursor_magnetic.jpg", "title": "Магнитный курсор", "title_en": "Magnetic cursor and buttons", "desc": "Курсор обволакивает кнопки, как на iPad, а круглые кнопки тянутся к указателю.", "desc_en": "The cursor wraps around buttons like on iPad, and round buttons pull towards the pointer."}, {"file": "cursor/cursor-content.html", "cat": "cursor", "src": "motion", "thumb": "_thumbs/cursor_cursor-content.jpg", "title": "Курсор с подписью", "title_en": "Cursor with custom content", "desc": "Над плитками курсор раздувается и показывает текст («View», «Play»). Над кругом появляется вращающаяся надпись.", "desc_en": "Over tiles the cursor grows and shows text (\"View\", \"Play\"). Over a circle a rotating label appears."}, {"file": "cursor/image-hover.html", "cat": "cursor", "src": "motion", "thumb": "_thumbs/cursor_image-hover.jpg", "title": "Картинка за курсором", "title_en": "Image hover follow", "desc": "При наведении на строку списка за курсором летит картинка, она наклоняется от скорости движения.", "desc_en": "Hover a list row and an image flies after the cursor, tilting with the speed of movement."}, {"file": "cursor/image-trail.html", "cat": "cursor", "src": "motion", "thumb": "_thumbs/cursor_image-trail.jpg", "title": "Шлейф из картинок", "title_en": "Image trail", "desc": "За указателем остаются карточки: в обычном режиме они гаснут на месте, во втором их отбрасывает по инерции.", "desc_en": "Cards are left behind the pointer: in one mode they fade in place, in the other they are thrown by inertia."}, {"file": "cursor/adaptive-caret.html", "cat": "cursor", "src": "motion", "thumb": "_thumbs/cursor_adaptive-caret.jpg", "title": "Курсор-каретка", "title_en": "Adaptive caret cursor", "desc": "Над текстом курсор превращается в каретку высотой со строку под ним.", "desc_en": "Over text the cursor becomes a caret as tall as the line beneath it."}, {"file": "cursor/pointer-grids.html", "cat": "cursor", "src": "motion", "thumb": "_thumbs/cursor_pointer-grids.jpg", "title": "Сетки, реагирующие на курсор", "title_en": "Pointer grids", "desc": "Пружинящие плитки, «магнитные опилки», поворачивающиеся к курсору, сетка, ловящая даже быстрые взмахи, конический градиент.", "desc_en": "Springy tiles, magnetic filings that turn to the cursor, a grid that catches even fast swipes, a conic gradient."}, {"file": "cursor/line-graph.html", "cat": "cursor", "src": "motion", "thumb": "_thumbs/cursor_line-graph.jpg", "title": "График с подсказкой у курсора", "title_en": "Line graph with cursor annotation", "desc": "Линия прорисовывается, точка и подсказка цепляются к ближайшему значению, число сверху плавно меняется.", "desc_en": "The line draws itself, a dot and tooltip snap to the nearest value, the number on top changes smoothly."}, {"file": "buttons/copy-button.html", "cat": "buttons", "src": "motion", "thumb": "_thumbs/buttons_copy-button.jpg", "title": "Кнопка «Копировать»", "title_en": "Copy button", "desc": "Иконка с размытием меняется на галочку, которая прорисовывается, подпись «Copy» сменяется на «Copied».", "desc_en": "The icon blurs into a check mark that draws itself, and \"Copy\" changes to \"Copied\"."}, {"file": "buttons/confetti.html", "cat": "buttons", "src": "motion", "thumb": "_thumbs/buttons_confetti.jpg", "title": "Конфетти", "title_en": "Confetti button", "desc": "Пружинящее нажатие и взрыв конфетти с гравитацией, вращением и затуханием.", "desc_en": "A springy press and a burst of confetti with gravity, spin and fade."}, {"file": "buttons/dots-morph.html", "cat": "buttons", "src": "motion", "thumb": "_thumbs/buttons_dots-morph.jpg", "title": "Точки превращаются в крестик", "title_en": "Dots morph button", "desc": "Четыре точки на пружине вытягиваются в крестик.", "desc_en": "Four dots stretch into a cross on a spring."}, {"file": "buttons/hold-to-confirm.html", "cat": "buttons", "src": "motion", "thumb": "_thumbs/buttons_hold-to-confirm.jpg", "title": "Удерживайте для подтверждения", "title_en": "Hold to confirm", "desc": "Заполнение при удержании, пружинный откат при раннем отпускании, работает с мышью, тачем и пробелом.", "desc_en": "Fills while held, springs back if released early. Works with mouse, touch and the space bar."}, {"file": "buttons/ripple.html", "cat": "buttons", "src": "motion", "thumb": "_thumbs/buttons_ripple.jpg", "title": "Волна при нажатии", "title_en": "Press ripple", "desc": "Круг расходится из точки касания, как в Material Design.", "desc_en": "A circle spreads from the touch point, Material Design style."}, {"file": "buttons/status-badge.html", "cat": "buttons", "src": "motion", "thumb": "_thumbs/buttons_status-badge.jpg", "title": "Бейдж со статусами", "title_en": "Multi-state badge", "desc": "Готово → обработка → успех или ошибка. Ширина плавно подстраивается, при ошибке бейдж трясётся.", "desc_en": "Ready → processing → success or error. Width adapts smoothly, and the badge shakes on error."}, {"file": "buttons/add-to-basket.html", "cat": "buttons", "src": "motion", "thumb": "_thumbs/buttons_add-to-basket.jpg", "title": "Добавить в корзину", "title_en": "Add to basket", "desc": "Товар летит в корзину по дуге, корзина подпрыгивает, счётчик растёт.", "desc_en": "The product flies into the basket along an arc, the basket bounces, the counter grows."}, {"file": "buttons/create-button.html", "cat": "buttons", "src": "motion", "thumb": "_thumbs/buttons_create-button.jpg", "title": "Кнопка «Создать» раскрывается в меню", "title_en": "Create button expanding into a menu", "desc": "Кнопка растёт в панель с сеткой вариантов через clip-path, варианты появляются по очереди.", "desc_en": "The button grows into a panel with a grid of options through clip-path, options appear in sequence."}, {"file": "navigation/floating-action-button.html", "cat": "navigation", "src": "motion", "thumb": "_thumbs/navigation_floating-action-button.jpg", "title": "Плавающая кнопка действий", "title_en": "Floating action button", "desc": "Плюс поворачивается в крестик, над ним по очереди на пружине выезжают действия с подписями.", "desc_en": "The plus turns into a cross, and labelled actions spring out above it one by one."}, {"file": "navigation/command-palette.html", "cat": "navigation", "src": "motion", "thumb": "_thumbs/navigation_command-palette.jpg", "title": "Командная палитра (⌘K)", "title_en": "Command palette", "desc": "Пружинное появление, поиск, подсветка, переезжающая между пунктами, управление стрелками.", "desc_en": "Springy entrance, search, a highlight that glides between items, arrow-key control."}, {"file": "navigation/radial-menu.html", "cat": "navigation", "src": "motion", "thumb": "_thumbs/navigation_radial-menu.jpg", "title": "Радиальное меню", "title_en": "Radial menu", "desc": "Варианты веером разлетаются вокруг кнопки.", "desc_en": "Options fan out around the button."}, {"file": "navigation/context-menu.html", "cat": "navigation", "src": "motion", "thumb": "_thumbs/navigation_context-menu.jpg", "title": "Контекстное меню", "title_en": "Context menu with submenu", "desc": "Меню по правому клику растёт из точки клика. Подменю с «безопасным треугольником», чтобы не закрывалось при движении по диагонали. Работает с клавиатуры.", "desc_en": "A right-click menu grows from the click point. Submenus use a safe triangle so they stay open on diagonal moves. Works with the keyboard."}, {"file": "navigation/mega-menu.html", "cat": "navigation", "src": "motion", "thumb": "_thumbs/navigation_mega-menu.jpg", "title": "Мега-меню", "title_en": "Mega menu with sliding indicator", "desc": "Подсветка переезжает между пунктами, панель меняет размер под каждое меню, колонки появляются по очереди.", "desc_en": "The highlight glides between items, the panel resizes for each menu, columns appear in sequence."}, {"file": "navigation/tabs.html", "cat": "navigation", "src": "motion", "thumb": "_thumbs/navigation_tabs.jpg", "title": "Вкладки и переключатели", "title_en": "Tabs, tab select and toggle group", "desc": "Вкладки с бегущей линией, содержимым по направлению и плавной высотой; таблетка выбора; группа переключателей с blend-mode.", "desc_en": "Tabs with a sliding line, directional content and smooth height; a pill selector; a toggle group with blend mode."}, {"file": "overlays/toasts.html", "cat": "overlays", "src": "motion", "thumb": "_thumbs/overlays_toasts.jpg", "title": "Стопка уведомлений (тосты)", "title_en": "Toast stack", "desc": "Тосты складываются стопкой, раскрываются при наведении, смахиваются вбок и закрываются сами.", "desc_en": "Toasts stack up, expand on hover, swipe away sideways and dismiss themselves."}, {"file": "overlays/notifications.html", "cat": "overlays", "src": "motion", "thumb": "_thumbs/overlays_notifications.jpg", "title": "Уведомления: стопка и список", "title_en": "Notification stack and list", "desc": "Стопка как на iPhone раскрывается по клику. Список плавно раздвигается при добавлении и удалении.", "desc_en": "An iPhone-style stack that expands on click. A list that makes room smoothly as items are added and removed."}, {"file": "overlays/bottom-sheet.html", "cat": "overlays", "src": "motion", "thumb": "_thumbs/overlays_bottom-sheet.jpg", "title": "Нижняя шторка", "title_en": "Bottom sheet", "desc": "Тянется за ручку, прилипает к половине и к полной высоте, смахивается вниз, содержимое появляется по очереди.", "desc_en": "Drag the handle, snap to half and full height, swipe down to close; content appears in sequence."}, {"file": "overlays/modals.html", "cat": "overlays", "src": "motion", "thumb": "_thumbs/overlays_modals.jpg", "title": "Модальные окна", "title_en": "Modals", "desc": "Обычный диалог с пружиной; плитка вырастает в окно и возвращается; пошаговое окно с плавной высотой.", "desc_en": "A plain dialog with a spring; a tile that grows into a window and back; a stepped dialog with smooth height."}, {"file": "overlays/accordion.html", "cat": "overlays", "src": "motion", "thumb": "_thumbs/overlays_accordion.jpg", "title": "Аккордеон", "title_en": "Accordion", "desc": "Плавная высота при открытии и закрытии, плюс превращается в минус, открыт только один пункт.", "desc_en": "Smooth height on open and close, the plus turns into a minus, only one item is open."}, {"file": "overlays/warp-overlay.html", "cat": "overlays", "src": "motion", "thumb": "_thumbs/overlays_warp-overlay.jpg", "title": "Страница отодвигается под окном", "title_en": "Warp overlay", "desc": "При открытии шторки страница позади наклоняется, уменьшается и темнеет.", "desc_en": "When the sheet opens, the page behind tilts, shrinks and darkens."}, {"file": "forms/ui-primitives.html", "cat": "forms", "src": "motion", "thumb": "_thumbs/forms_ui-primitives.jpg", "title": "Анимированные элементы форм", "title_en": "Animated UI primitives", "desc": "Чекбокс с прорисовкой галочки, радиокнопки, переключатель, выпадающий список, подсказка, прогресс, панель инструментов с подсветкой.", "desc_en": "A checkbox with a drawn check, radio buttons, a switch, a dropdown, a tooltip, progress, a toolbar with a highlight."}, {"file": "forms/ios-slider.html", "cat": "forms", "src": "motion", "thumb": "_thumbs/forms_ios-slider.jpg", "title": "Тянущийся слайдер", "title_en": "Stretchy slider", "desc": "Слайдер как в iOS: за краем он растягивается и пружинит обратно.", "desc_en": "An iOS-style slider that stretches past its ends and springs back."}, {"file": "forms/color-picker.html", "cat": "forms", "src": "motion", "thumb": "_thumbs/forms_color-picker.jpg", "title": "Круговой выбор цвета", "title_en": "Circular colour picker", "desc": "Точки по кругу расступаются и растут возле курсора.", "desc_en": "Dots arranged in a circle part and grow near the cursor."}, {"file": "forms/sign-in-flow.html", "cat": "forms", "src": "motion", "thumb": "_thumbs/forms_sign-in-flow.jpg", "title": "Вход: поле по условию, код, меню пользователя", "title_en": "Sign-in flow", "desc": "Поле пароля выезжает только когда нужно; карточка с кодом наезжает поверх; аватар раскрывается в меню; счётчик символов с кольцом.", "desc_en": "The password field slides in only when needed; a code card slides over; the avatar expands into a menu; a character counter with a ring."}, {"file": "forms/exposure-slider.html", "cat": "forms", "src": "motion", "thumb": "_thumbs/forms_exposure-slider.jpg", "title": "Слайдер экспозиции", "title_en": "Exposure slider", "desc": "Линейка с делениями как в камере iPhone: перетаскивание, колесо, клавиши, деления у центра выше.", "desc_en": "A ruler with ticks like the iPhone camera: drag, wheel, keys, taller ticks near the centre."}, {"file": "layout/layout-basics.html", "cat": "layout", "src": "motion", "thumb": "_thumbs/layout_layout-basics.jpg", "title": "Анимация раскладки (FLIP)", "title_en": "Layout animation basics", "desc": "Смена расположения, соотношения сторон, перемешивание, общий подчёркивающий элемент, «якорь» детей при изменении размера, три режима появления и исчезновения.", "desc_en": "Position and aspect changes, shuffling, a shared underline, anchored children during resizes, three enter and exit modes."}, {"file": "layout/expanding-cards.html", "cat": "layout", "src": "motion", "thumb": "_thumbs/layout_expanding-cards.jpg", "title": "Карточки раскрываются в статью, папка приложений", "title_en": "Expanding cards and app folder", "desc": "Карточка в стиле App Store раскрывается в статью через clip-path. Папка вырастает в панель с иконками.", "desc_en": "An App Store style card opens into an article through clip-path. A folder grows into a panel of icons."}, {"file": "layout/card-stack.html", "cat": "layout", "src": "motion", "thumb": "_thumbs/layout_card-stack.jpg", "title": "Стопка карточек со свайпом", "title_en": "Swipeable card stack", "desc": "Свайп как в Tinder: поворот, штампы LIKE и NOPE, улёт с инерцией, следующая карточка поднимается.", "desc_en": "Tinder-style swipes: rotation, LIKE and NOPE stamps, an inertial throw, the next card rises."}, {"file": "layout/reorder.html", "cat": "layout", "src": "motion", "thumb": "_thumbs/layout_reorder.jpg", "title": "Перетаскивание для сортировки", "title_en": "Drag to reorder", "desc": "Список задач с галочками и зачёркиванием и сетка с перетаскиванием в двух направлениях. Alt + стрелки работают с клавиатуры.", "desc_en": "A to-do list with checks and strike-through, and a grid with dragging in two directions. Alt + arrows work from the keyboard."}, {"file": "layout/swipe-actions.html", "cat": "layout", "src": "motion", "thumb": "_thumbs/layout_swipe-actions.jpg", "title": "Свайп-действия в списке", "title_en": "Swipe actions", "desc": "Строка смахивается влево и открывает «Архив» и «Удалить». Длинный свайп сразу удаляет строку.", "desc_en": "Swipe a row left to reveal Archive and Delete. A long swipe deletes the row at once."}, {"file": "layout/stagger-grid.html", "cat": "layout", "src": "motion", "thumb": "_thumbs/layout_stagger-grid.jpg", "title": "Волна по сетке и бесконечный список", "title_en": "Physical stagger grid and infinite list", "desc": "Волна расходится от клика, задержка зависит от расстояния. Бесконечный список подгружает элементы с заглушками.", "desc_en": "A wave spreads from the click, the delay depends on distance. An infinite list loads items with placeholders."}, {"file": "loading/loaders.html", "cat": "loading", "src": "motion", "thumb": "_thumbs/loading_loaders.jpg", "title": "Загрузчики", "title_en": "Loaders", "desc": "Кольцо, прыгающие точки, пульсирующие точки, круги, полоса прогресса, вступительный экран с линией.", "desc_en": "A ring, bouncing dots, pulsing dots, circles, a progress bar, an intro screen with a line."}, {"file": "loading/skeleton-shimmer.html", "cat": "loading", "src": "motion", "thumb": "_thumbs/loading_skeleton-shimmer.jpg", "title": "Скелетон с переливом", "title_en": "Skeleton shimmer", "desc": "Заглушки точного размера с бегущим бликом, затем содержимое проявляется из размытия по очереди.", "desc_en": "Exact-size placeholders with a running shine, then content emerges from blur in sequence."}, {"file": "interactions/image-compare.html", "cat": "interactions", "src": "motion", "thumb": "_thumbs/interactions_image-compare.jpg", "title": "Сравнение «до/после»", "title_en": "Before/after image compare slider", "desc": "Ползунок делит два изображения; тянуть, нажимать, стрелки. Подписи гаснут у краёв.", "desc_en": "A handle splits two images; drag, click or use arrows. Labels fade near the edges."}, {"file": "interactions/tilt-card.html", "cat": "interactions", "src": "motion", "thumb": "_thumbs/interactions_tilt-card.jpg", "title": "Наклоняющаяся карточка", "title_en": "Tilt card", "desc": "Карточка наклоняется за курсором с пружиной и бликом, текст «приподнят» над ней.", "desc_en": "The card tilts after the cursor with a spring and a glare, its text lifted above the surface."}, {"file": "basics/transition-lab.html", "cat": "basics", "src": "motion", "thumb": "_thumbs/basics_transition-lab.jpg", "title": "Лаборатория переходов", "title_en": "Transition lab", "desc": "Ползунки жёсткости, затухания и массы пружины; график кривой; сравнение с bounce и ease; готовая CSS-строка linear() для пружины без JS.", "desc_en": "Sliders for spring stiffness, damping and mass; a curve plot; comparison with bounce and ease; a ready CSS linear() string for springs without JS."}, {"file": "basics/enter-exit-stagger.html", "cat": "basics", "src": "motion", "thumb": "_thumbs/basics_enter-exit-stagger.jpg", "title": "Появление, исчезновение, кадры, очередь", "title_en": "Enter, exit, keyframes and staggered variants", "desc": "Появление и исчезновение, ключевые кадры, прерываемый поворот, меню «родитель, затем дети», анимация по состоянию, уход в сторону, куда листали.", "desc_en": "Enter and exit, keyframes, an interruptible rotation, a parent-then-children menu, state-driven animation, exit in the swipe direction."}, {"file": "basics/svg-paths.html", "cat": "basics", "src": "motion", "thumb": "_thumbs/basics_svg-paths.jpg", "title": "SVG-пути", "title_en": "SVG paths", "desc": "Прорисовка линии, превращение фигур, движение по кривой, длина пути от ползунка.", "desc_en": "Line drawing, shape morphing, motion along a path, path length from a slider."}, {"file": "basics/drag-gestures.html", "cat": "basics", "src": "motion", "thumb": "_thumbs/basics_drag-gestures.jpg", "title": "Перетаскивание и жесты", "title_en": "Drag and gestures", "desc": "Свободное перетаскивание с возвратом, границы с упругими краями, блок по направлению, наведение и нажатие, следование за курсором.", "desc_en": "Free dragging with return, bounds with elastic edges, axis locking, hover and press, following the cursor."}, {"file": "basics/time-and-values.html", "cat": "basics", "src": "motion", "thumb": "_thumbs/basics_time-and-values.jpg", "title": "Кадры, время, значения, цвета", "title_en": "Frame loop, time, values and colour interpolation", "desc": "3D-куб на requestAnimationFrame, вращение с постоянной скоростью, счётчик в тексте, сравнение смешивания цветов (sRGB, линейный RGB, OKLCH).", "desc_en": "A 3D cube on requestAnimationFrame, constant-speed rotation, a counter in text, colour mixing compared (sRGB, linear RGB, OKLCH)."}, {"file": "basics/bezier-editor.html", "cat": "basics", "src": "motion", "thumb": "_thumbs/basics_bezier-editor.jpg", "title": "Редактор кривой cubic-bezier", "title_en": "Cubic-bezier editor", "desc": "Перетаскивайте точки (или стрелками) и сразу видите движение и готовую строку CSS.", "desc_en": "Drag the points (or use arrows) to see the motion and the ready CSS string at once."}, {"file": "hero/hero-stagger.html", "cat": "hero", "src": "motion", "thumb": "_thumbs/hero_hero-stagger.jpg", "title": "Первый экран с пружинным появлением", "title_en": "Hero with staggered spring entrance", "desc": "Бейдж, заголовок, текст, кнопки и цифры появляются одной волной с общей пружиной.", "desc_en": "Badge, headline, text, buttons and numbers enter in a single wave with a shared spring."}, {"file": "experimental/glow-ripple.html", "cat": "experimental", "src": "motion", "thumb": "_thumbs/experimental_glow-ripple.jpg", "title": "Свечение по краю экрана", "title_en": "Glow ripple", "desc": "Радужное свечение по контуру и волна от кнопки, как у голосовых ассистентов.", "desc_en": "A rainbow glow around the screen edge and a wave from the button, like voice assistants."}, {"file": "experimental/watch-grid.html", "cat": "experimental", "src": "motion", "thumb": "_thumbs/experimental_watch-grid.jpg", "title": "Сетка как на часах", "title_en": "Watch-style honeycomb grid", "desc": "Соты из иконок: перетаскивание с инерцией, у краёв иконки уменьшаются.", "desc_en": "A honeycomb of icons: inertial dragging, icons shrink near the edges."}, {"file": "experimental/bouncy-modal.html", "cat": "experimental", "src": "motion", "thumb": "_thumbs/experimental_bouncy-modal.jpg", "title": "Игровое окно", "title_en": "Playful game-style modal", "desc": "Окно «уровень пройден»: выпрыгивает с пружиной, звёзды загораются по очереди.", "desc_en": "A \"level complete\" window springs in and its stars light up one by one."}, {"file": "charts/area-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_area-chart.jpg", "title": "Диаграмма с областями", "title_en": "Area chart", "desc": "Выручка и расходы за 30 дней: области раскрываются слева направо, переключение кривой, перекрестие с подсказкой и выделение диапазона перетаскиванием.", "desc_en": "Revenue vs costs over 30 days: areas reveal left to right, switchable curves, a crosshair tooltip and drag-to-select range totals."}, {"file": "charts/bar-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_bar-chart.jpg", "title": "Столбчатая диаграмма", "title_en": "Bar chart", "desc": "90 столбиков вырастают волной; при смене метрики перетекают к новым значениям, остальные столбики отступают при наведении.", "desc_en": "90 bars grow in a wave and morph to new values when the metric changes; the rest step back on hover."}, {"file": "charts/candlestick-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_candlestick-chart.jpg", "title": "Свечной график", "title_en": "Candlestick chart", "desc": "Свечи раскрываются от середины, фитили тянутся следом. Перекрестие и ценник справа берут цвет свечи под курсором.", "desc_en": "Candles open from their midpoint with wicks stretching after. The crosshair and price tag take the colour of the candle under the cursor."}, {"file": "charts/choropleth-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_choropleth-chart.jpg", "title": "Карта мира по странам", "title_en": "Choropleth map", "desc": "Посетители по странам: страны проявляются с запада на восток, шкала фильтрует по уровню, клик плавно приближает страну.", "desc_en": "Visitors by country: countries fade in west to east, the scale isolates a band, and a click flies to the country."}, {"file": "charts/composed-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_composed-chart.jpg", "title": "Комбинированный график", "title_en": "Composed chart", "desc": "Столбцы, область и пунктирная линия на одной оси. Слои скрываются из легенды, кривая меняется для всех фигур сразу.", "desc_en": "Bars, an area and a dashed line on one axis. Layers toggle from the legend and the curve swaps for every shape at once."}, {"file": "charts/funnel-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_funnel-chart.jpg", "title": "Воронка продаж", "title_en": "Funnel chart", "desc": "Плавная лента воронки с ореолами вырастает из центральной линии; при наведении — доля от общего и от предыдущего этапа.", "desc_en": "A smooth funnel band with layered halos grows from its centre line; hover shows share of total and of the previous stage."}, {"file": "charts/gauge-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_gauge-chart.jpg", "title": "Шкала с насечками", "title_en": "Notched gauge", "desc": "Насечки загораются одна за другой, пока растёт значение, а число в центре прокручивается по цифрам.", "desc_en": "Notches light up one after another as the value climbs while the figure in the middle rolls digit by digit."}, {"file": "charts/heatmap-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_heatmap-chart.jpg", "title": "Тепловая карта активности", "title_en": "Activity heatmap", "desc": "Год активности круглыми ячейками с разбивкой по кварталам. Ячейки проявляются по диагонали, легенда оставляет один уровень.", "desc_en": "A year of activity in round cells split by quarter. Cells ripple in diagonally and the legend keeps a single level lit."}, {"file": "charts/line-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_line-chart.jpg", "title": "Линейный график с зумом", "title_en": "Line chart with brush", "desc": "Три плавные линии на точечной сетке и мини-обзор снизу: окно перетаскивается и растягивается за ручки, график приближается.", "desc_en": "Three smooth lines on a dot grid with an overview brush below: drag or resize the window to zoom the chart."}, {"file": "charts/live-line-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_live-line-chart.jpg", "title": "Живой график", "title_en": "Live line chart", "desc": "Цена приходит каждую секунду: окно прокручивается, ось плавно подстраивается, цифры перекатываются, точка пульсирует.", "desc_en": "A price streams in every second: the window scrolls, the axis eases to new extremes, digits roll and the head pulses."}, {"file": "charts/pie-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_pie-chart.jpg", "title": "Круговая диаграмма", "title_en": "Pie chart", "desc": "Сегменты пончика заполняются по кругу, выдвигаются при наведении, центр прокручивается к значению. Дырка плавно закрывается в режиме «Pie».", "desc_en": "Donut slices sweep in, pop out on hover and the centre rolls to the value. Switch to a pie and the hole closes smoothly."}, {"file": "charts/profit-loss-line.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_profit-loss-line.jpg", "title": "Линия прибыли и убытка", "title_en": "Profit / loss line", "desc": "Одна линия двух цветов: выше нуля — прибыль, ниже — убыток. Нулевая линия подсвечена, легенда изолирует сторону.", "desc_en": "One line in two colours: above zero is profit, below is loss. The zero baseline is highlighted and the legend isolates a side."}, {"file": "charts/radar-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_radar-chart.jpg", "title": "Радарная диаграмма", "title_en": "Radar chart", "desc": "Две модели по шести метрикам. Фигуры вырастают из центра, смена квартала перетягивает каждую вершину, сетка — многоугольник или круг.", "desc_en": "Two models across six metrics. Shapes grow from the centre, switching quarters morphs every vertex, and the grid toggles polygon/circle."}, {"file": "charts/ring-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_ring-chart.jpg", "title": "Кольцевые прогресс-бары", "title_en": "Ring chart", "desc": "Вложенные кольца с круглыми концами заполняются по очереди; дуга переключается между полной, три четверти и половиной.", "desc_en": "Nested rings with round caps fill one after another; the arc switches between full, three-quarter and half."}, {"file": "charts/sankey-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_sankey-chart.jpg", "title": "Диаграмма Санкей", "title_en": "Sankey chart", "desc": "Поток от источника к странице и результату. Ленты переливаются от цвета к цвету, наведение на узел подсвечивает всё, что через него идёт.", "desc_en": "Flow from source to page to outcome. Bands blend between node colours and hovering a node traces everything that passes through it."}, {"file": "charts/scatter-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_scatter-chart.jpg", "title": "Точечная диаграмма", "title_en": "Scatter chart", "desc": "Точки с кольцами появляются по очереди, перекрестие притягивается к ближайшей точке, серии скрываются из легенды.", "desc_en": "Ringed points pop in one by one, the crosshair snaps to the nearest point, and series hide from the legend."}, {"file": "charts/sunburst-chart.html", "cat": "charts", "src": "motion", "thumb": "_thumbs/charts_sunburst-chart.jpg", "title": "Диаграмма «солнце»", "title_en": "Sunburst chart", "desc": "Выручка на трёх уровнях вложенности. Клик по сегменту приближает его и перестраивает кольца, клик по центру — шаг назад.", "desc_en": "Revenue three levels deep. Click a segment to zoom and re-flow the rings; click the centre to step back out."}, {"file": "webgl/gradients/mesh-gradient.html", "cat": "webgl-gradients", "src": "webgl", "thumb": "_thumbs/webgl_gradients_mesh-gradient.jpg", "title": "Меш-градиент из 5 точек", "title_en": "Five-point mesh gradient", "desc": "Пять цветных точек медленно плавают, между ними мягкий градиент с зерном. Цвета меняются прямо на странице.", "desc_en": "Five coloured points drift slowly with a soft, grainy gradient between them. Colours can be changed on the page."}, {"file": "webgl/gradients/flow-gradient.html", "cat": "webgl-gradients", "src": "webgl", "thumb": "_thumbs/webgl_gradients_flow-gradient.jpg", "title": "Текучий градиент", "title_en": "Flowing gradient", "desc": "Жидкий розово-фиолетово-зелёный градиент, который всё время перетекает. Палитра настраивается.", "desc_en": "A liquid pink, violet and green gradient that keeps flowing. The palette is adjustable."}, {"file": "webgl/gradients/red-flow.html", "cat": "webgl-gradients", "src": "webgl", "thumb": "_thumbs/webgl_gradients_red-flow.jpg", "title": "Красный градиент-занавес", "title_en": "Red gradient curtain", "desc": "Мягкий красный «занавес» света на чёрном, волнуется от движения мыши.", "desc_en": "A soft red curtain of light on black that ripples with the mouse."}, {"file": "webgl/gradients/fluted-glass.html", "cat": "webgl-gradients", "src": "webgl", "thumb": "_thumbs/webgl_gradients_fluted-glass.jpg", "title": "Градиент за рифлёным стеклом", "title_en": "Gradient behind fluted glass", "desc": "Шумовой сине-мятный градиент сквозь рифлёное стекло, число полос регулируется.", "desc_en": "A blue and mint noise gradient behind fluted glass with an adjustable number of flutes."}, {"file": "webgl/gradients/azure-waves.html", "cat": "webgl-gradients", "src": "webgl", "thumb": "_thumbs/webgl_gradients_azure-waves.jpg", "title": "Синие стеклянные волны", "title_en": "Blue glass waves", "desc": "Широкая лента сине-фиолетовых волн с бликами на белом фоне.", "desc_en": "A wide band of blue and violet waves with highlights on white."}, {"file": "webgl/gradients/soft-shapes.html", "cat": "webgl-gradients", "src": "webgl", "thumb": "_thumbs/webgl_gradients_soft-shapes.jpg", "title": "Стопка мягких форм", "title_en": "Soft shape stack", "desc": "Размытые лавандовые и мятные формы наслаиваются на светлом фоне.", "desc_en": "Blurred lavender and mint shapes layered on a light background."}, {"file": "webgl/light/neon-tubes.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_neon-tubes.jpg", "title": "Неоновые трубки", "title_en": "Neon tubes", "desc": "Четыре неоновые лампы с цветным свечением и отражением на полу. Трубки перетаскиваются мышью, цвета меняются.", "desc_en": "Four neon tubes with coloured glow and a reflection on the floor. Drag the tubes, change the colours."}, {"file": "webgl/light/light-doorway.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_light-doorway.jpg", "title": "Световой проём", "title_en": "Light doorway", "desc": "Объёмный свет из дверного проёма в бирюзовой дымке, камера медленно приближается. Под заголовок.", "desc_en": "Volumetric light from a doorway in teal haze while the camera slowly moves in. Room for a headline."}, {"file": "webgl/light/circuit-horizon.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_circuit-horizon.jpg", "title": "Схемы до горизонта", "title_en": "Circuits to the horizon", "desc": "Перспективная сетка из прямоугольных дорожек, по ним бегут светящиеся узлы. Крупный заголовок сверху.", "desc_en": "A perspective grid of rectangular traces with glowing nodes running along them. A large headline on top."}, {"file": "webgl/light/light-helix.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_light-helix.jpg", "title": "Световая спираль", "title_en": "Light helix", "desc": "Голубая спираль из нитей света с частицами и боке на тёмно-синем.", "desc_en": "A blue helix of light strands with particles and bokeh on dark blue."}, {"file": "webgl/light/horizon-burst.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_horizon-burst.jpg", "title": "Вспышка над горизонтом", "title_en": "Burst over the horizon", "desc": "Синий взрыв света над краем планеты, лучи и туманность. Мышь сдвигает вспышку.", "desc_en": "A blue burst of light over the edge of a planet, with rays and nebula. The mouse moves the flare."}, {"file": "webgl/light/nebula-rays.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_nebula-rays.jpg", "title": "Зелёные лучи туманности", "title_en": "Green nebula rays", "desc": "Лучи света из угла экрана в глубоком бирюзовом, под центральный заголовок.", "desc_en": "Rays of light from a corner in deep teal, framing a centred headline."}, {"file": "webgl/light/led-grid.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_led-grid.jpg", "title": "Светодиодная сетка", "title_en": "LED grid", "desc": "Сетка точек загорается по рисуемым линиям, мышь тоже рисует светом.", "desc_en": "A grid of dots lights up along drawn lines; the mouse paints with light too."}, {"file": "webgl/light/light-collision.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_light-collision.jpg", "title": "Столкновение лучей", "title_en": "Light collision", "desc": "Тёплый и холодный лучи встречаются в одной точке, с хроматической аберрацией и зерном.", "desc_en": "A warm and a cold beam meet at one point, with chromatic aberration and grain."}, {"file": "webgl/light/light-blades.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_light-blades.jpg", "title": "Световые лезвия", "title_en": "Light blades", "desc": "Изогнутые белые блики, как отражения на клинках, плавно скользят.", "desc_en": "Curved white highlights, like reflections on blades, glide smoothly."}, {"file": "webgl/light/laser-beam.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_laser-beam.jpg", "title": "Лазерный луч", "title_en": "Laser beam", "desc": "Фиолетовый луч бьёт в землю и поднимает подсвеченный дым.", "desc_en": "A violet beam strikes the ground and lifts lit smoke."}, {"file": "webgl/light/ray-fan.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_ray-fan.jpg", "title": "Веер прожекторов", "title_en": "Floodlight fan", "desc": "Полукруг зелёных лучей, как свет стадиона, пульсирует наружу.", "desc_en": "A half circle of green rays, like stadium lights, pulses outwards."}, {"file": "webgl/light/electric-ring.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_electric-ring.jpg", "title": "Электрическое кольцо", "title_en": "Electric ring", "desc": "Синий эллипс-портал с бегущими молниями.", "desc_en": "A blue elliptical portal with running lightning."}, {"file": "webgl/light/ghost-ring.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_ghost-ring.jpg", "title": "Призрачное кольцо", "title_en": "Ghost ring", "desc": "Фиолетовое светящееся кольцо дышит и колышется, поверх символьный дизеринг.", "desc_en": "A glowing violet ring breathes and sways under glyph dithering."}, {"file": "webgl/light/red-blinds.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_red-blinds.jpg", "title": "Красные жалюзи", "title_en": "Red blinds", "desc": "Диагональный луч из красно-розовых квадратов-ламелей на тёмно-бирюзовом.", "desc_en": "A diagonal beam of red and pink slats on dark teal."}, {"file": "webgl/light/arc-lines-scan.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_arc-lines-scan.jpg", "title": "Дуги и сканирующий луч", "title_en": "Arcs and a scanning beam", "desc": "Пучок тонких синих линий-дуг, по нему проходит яркий луч сканера.", "desc_en": "A bundle of thin blue arcs swept by a bright scanning beam."}, {"file": "webgl/light/glass-logo-beams.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_glass-logo-beams.jpg", "title": "Стеклянный логотип в лучах света", "title_en": "Glass logo in light beams", "desc": "Логотип из стекла преломляет тёплые лучи на тёмно-коричневом. Можно загрузить свой PNG-логотип.", "desc_en": "A glass logo refracts warm beams on dark brown. Load your own PNG logo."}, {"file": "webgl/light/embossed-chip.html", "cat": "webgl-light", "src": "webgl", "thumb": "_thumbs/webgl_light_embossed-chip.jpg", "title": "Чип с бегущим светом", "title_en": "Chip with travelling light", "desc": "Тёмный чип с выдавленной надписью, по нему проходит точечный свет и зажигает рельеф.", "desc_en": "A dark chip with embossed lettering; a point light sweeps across and lights up the relief."}, {"file": "webgl/3d/circuit-board.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_circuit-board.jpg", "title": "Печатная плата с ASCII-линзой", "title_en": "Circuit board with an ASCII lens", "desc": "3D-плата с контурами и медными дорожками вращается над пиксельным заголовком. Курсор открывает круг оранжевых ASCII-символов.", "desc_en": "A 3D board with outlines and copper traces turns above a pixel headline. The cursor opens a circle of orange ASCII."}, {"file": "webgl/3d/voxel-clouds.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_voxel-clouds.jpg", "title": "Воксельные облака", "title_en": "Voxel clouds", "desc": "Потолок из кубических облаков над лавандовым небом, заголовок проявляется пиксельными блоками.", "desc_en": "A ceiling of cubic clouds over a lavender sky; the headline appears in pixel blocks."}, {"file": "webgl/3d/translucent-discs.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_translucent-discs.jpg", "title": "Полупрозрачные диски", "title_en": "Translucent discs", "desc": "Пять цветных дисков веером, наклоняются к курсору и отбрасывают радужную тень. Чистый CSS 3D.", "desc_en": "Five coloured discs in a fan tilt towards the cursor and cast a rainbow shadow. Pure CSS 3D."}, {"file": "webgl/3d/marble-run.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_marble-run.jpg", "title": "Шарик на трассе", "title_en": "Marble run", "desc": "Хромовый шарик катится по глянцевой синей трассе на опорах, камера идёт следом, фон мягко размыт.", "desc_en": "A chrome marble rolls along a glossy blue track on supports, the camera follows, the background is softly blurred."}, {"file": "webgl/3d/cd-carousel.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_cd-carousel.jpg", "title": "Карусель CD", "title_en": "CD carousel", "desc": "Диски с обложками летают по кругу и вращаются, ползунок прогресса можно тянуть. CSS 3D.", "desc_en": "Discs with covers fly in a circle and spin; the progress slider can be dragged. CSS 3D."}, {"file": "webgl/3d/ribbon-badge.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_ribbon-badge.jpg", "title": "Лента и круговой бейдж", "title_en": "Ribbon and circular badge", "desc": "Радужная 3D-лента извивается сквозь вращающуюся круговую надпись.", "desc_en": "A rainbow 3D ribbon winds through a rotating circular label."}, {"file": "webgl/3d/metal-spheres.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_metal-spheres.jpg", "title": "Металлические шары с физикой", "title_en": "Metal spheres with physics", "desc": "Тёмно-зелёные шары с гравитацией и столкновениями, мышь их расталкивает. Сзади бегущая строка с рябью.", "desc_en": "Dark green spheres with gravity and collisions; the mouse pushes them apart. A rippling ticker behind."}, {"file": "webgl/3d/fracture-cube.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_fracture-cube.jpg", "title": "Раскалывающийся куб", "title_en": "Fracturing cube", "desc": "Куб из восьми частей раскрывается и показывает светящееся зелёное ядро.", "desc_en": "An eight-piece cube opens up to reveal a glowing green core."}, {"file": "webgl/3d/voxel-skyline.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_voxel-skyline.jpg", "title": "Стопки вокселей", "title_en": "Voxel stacks", "desc": "Серые кубики с фасками растут как город, отбрасывают тени и вспыхивают. Заголовок с засечками.", "desc_en": "Grey bevelled cubes grow like a city, cast shadows and flash. A serif headline."}, {"file": "webgl/3d/wireframe-torus.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_wireframe-torus.jpg", "title": "Каркасный тор с искрами", "title_en": "Wireframe torus with sparks", "desc": "Вращающийся тор из персиковых линий, по рёбрам бегут искры.", "desc_en": "A rotating torus of peach lines with sparks running along the edges."}, {"file": "webgl/3d/goop-spheres.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_goop-spheres.jpg", "title": "Слипающиеся шары", "title_en": "Merging spheres", "desc": "Шестнадцать глянцевых шаров стягиваются к центру и сливаются, мышь их подбрасывает. С метками трекинга.", "desc_en": "Sixteen glossy spheres pull to the centre and merge; the mouse tosses them. With tracking labels."}, {"file": "webgl/3d/wobble-blob.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_wobble-blob.jpg", "title": "Колышущаяся капля", "title_en": "Wobbling blob", "desc": "Тёмная 3D-капля с бирюзовым внутренним свечением, под ней бегущая строка.", "desc_en": "A dark 3D blob with a teal inner glow, a ticker beneath it."}, {"file": "webgl/3d/burning-tetra.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_burning-tetra.jpg", "title": "Огненный тетраэдр", "title_en": "Fire tetrahedron", "desc": "Тетраэдр на светодиодном табло: огненные точки, лучи от вершин, плавно появляется и гаснет.", "desc_en": "A tetrahedron on an LED board: fiery dots and rays from the vertices, fading in and out smoothly."}, {"file": "webgl/3d/hologram-bloom.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_hologram-bloom.jpg", "title": "Голографический цветок", "title_en": "Holographic bloom", "desc": "Кристаллическая 3D-форма с радужными гранями вращается и дышит.", "desc_en": "A crystalline 3D form with iridescent faces rotates and breathes."}, {"file": "webgl/3d/slab-ring.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_slab-ring.jpg", "title": "Кольцо из хромовых пластин", "title_en": "Ring of chrome slabs", "desc": "Кольцо зелёно-жёлтых зеркальных пластин вращается, камера отъезжает от крупного плана.", "desc_en": "A ring of green-gold mirror slabs rotates as the camera pulls back from a close-up."}, {"file": "webgl/3d/pillow-landscape.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_pillow-landscape.jpg", "title": "Мягкий ландшафт", "title_en": "Pillow landscape", "desc": "Монохромные «подушки» под боковым светом с мягкими тенями, медленно дышат.", "desc_en": "Monochrome pillows under side light with soft shadows, slowly breathing."}, {"file": "webgl/3d/museum-statue.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_museum-statue.jpg", "title": "Статуя в музее", "title_en": "Statue in a museum", "desc": "Бронзовый бюст на постаменте вращается, в центре блок точечной матрицы, сзади бегущий заголовок.", "desc_en": "A bronze bust turns on a plinth, a dot-matrix block in the middle, a running headline behind."}, {"file": "webgl/3d/glass-hash.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_glass-hash.jpg", "title": "Стеклянная решётка #", "title_en": "Glass hash sign", "desc": "Янтарный стеклянный знак # с преломлением и тёплой цветной тенью на белом.", "desc_en": "An amber glass # sign with refraction and a warm coloured shadow on white."}, {"file": "webgl/3d/laptop.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_laptop.jpg", "title": "Светящийся ноутбук", "title_en": "Glowing laptop", "desc": "Ноутбук на глянцевом постаменте: экран с переливающейся надписью светит на клавиатуру и отражается внизу.", "desc_en": "A laptop on a glossy plinth: the screen with shimmering lettering lights the keyboard and reflects below."}, {"file": "webgl/3d/metal-knot.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_metal-knot.jpg", "title": "Узел из розового золота", "title_en": "Rose-gold knot", "desc": "Вращающийся трилистник между строками заголовка на размытом фоне.", "desc_en": "A rotating trefoil knot between lines of a headline on a blurred background."}, {"file": "webgl/3d/glass-planet.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_glass-planet.jpg", "title": "Стеклянная планета", "title_en": "Glass planet", "desc": "Тёмная стеклянная сфера, внутри бегут бирюзовые световые следы.", "desc_en": "A dark glass sphere with teal light trails running inside."}, {"file": "webgl/3d/coil-rays.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_coil-rays.jpg", "title": "Пружина с лучами", "title_en": "Coil with rays", "desc": "Синяя спираль вращается, от неё расходятся световые лучи.", "desc_en": "A blue coil rotates while rays of light spread from it."}, {"file": "webgl/3d/gem.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_gem.jpg", "title": "Кристалл", "title_en": "Gem", "desc": "Бриллиант огранки с внутренними отражениями вращается над заголовком из шума.", "desc_en": "A brilliant-cut diamond with internal reflections turns above a headline made of noise."}, {"file": "webgl/3d/iso-landscape.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_iso-landscape.jpg", "title": "Изометрический пейзаж", "title_en": "Isometric landscape", "desc": "Пастельная сетка-рельеф с волнами высоты, от курсора расходится рябь.", "desc_en": "A pastel relief grid with height waves; ripples spread from the cursor."}, {"file": "webgl/3d/hand-horns.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_hand-horns.jpg", "title": "Рука «коза»", "title_en": "Horns hand", "desc": "Нефритовая 3D-рука с метками трекинга и подписями.", "desc_en": "A jade 3D hand with tracking markers and labels."}, {"file": "webgl/3d/balloon-dog.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_balloon-dog.jpg", "title": "Надувная собака", "title_en": "Balloon dog", "desc": "Глянцевая собачка из воздушных шариков проявляется из пикселей, мышь её растягивает.", "desc_en": "A glossy balloon dog emerges from pixels; the mouse stretches it."}, {"file": "webgl/3d/asteroid.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_asteroid.jpg", "title": "Астероид", "title_en": "Asteroid", "desc": "Каменная глыба медленно вращается в космосе, жёсткий свет и тёплое свечение по краю.", "desc_en": "A rock turns slowly in space with hard light and a warm rim glow."}, {"file": "webgl/3d/silver-swirl.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_silver-swirl.jpg", "title": "Серебряный завиток", "title_en": "Silver swirl", "desc": "Закрученная серебряная форма перед крупным серым заголовком.", "desc_en": "A twisted silver form in front of a large grey headline."}, {"file": "webgl/3d/disc-wave.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_disc-wave.jpg", "title": "Волна переворачивающихся дисков", "title_en": "Flipping disc wave", "desc": "Сетка объёмных синих дисков переворачивается волной с бликами. Чистый CSS.", "desc_en": "A grid of chunky blue discs flips over in a wave with highlights. Pure CSS."}, {"file": "webgl/3d/wireframe-globe.html", "cat": "webgl-3d", "src": "webgl", "thumb": "_thumbs/webgl_3d_wireframe-globe.jpg", "title": "Каркасный глобус", "title_en": "Wireframe globe", "desc": "Чёрный глобус из меридианов на ярко-зелёном, как постер. SVG.", "desc_en": "A black globe of meridians on bright green, like a poster. SVG."}, {"file": "webgl/text/chrome-scatter.html", "cat": "webgl-text", "src": "webgl", "thumb": "_thumbs/webgl_text_chrome-scatter.jpg", "title": "Хромовые буквы разлетаются", "title_en": "Scattering chrome letters", "desc": "Хромовая надпись прописью распадается, кувыркается и собирается обратно, буквы убегают от курсора.", "desc_en": "Chrome script lettering breaks apart, tumbles and reassembles; letters run from the cursor."}, {"file": "webgl/text/spray-dither-text.html", "cat": "webgl-text", "src": "webgl", "thumb": "_thumbs/webgl_text_spray-dither-text.jpg", "title": "Текст спреем с дизерингом", "title_en": "Spray text with dithering", "desc": "Размытая волнистая надпись в бело-синем дизеринге с HUD-прицелами.", "desc_en": "Blurry wavy lettering in white and blue dithering with HUD crosshairs."}, {"file": "webgl/text/particle-text.html", "cat": "webgl-text", "src": "webgl", "thumb": "_thumbs/webgl_text_particle-text.jpg", "title": "Надпись из частиц", "title_en": "Particle lettering", "desc": "Слово из оранжевых частиц, разлетается от курсора и собирается.", "desc_en": "A word made of orange particles scatters from the cursor and comes back together."}, {"file": "webgl/text/cosmic-glow.html", "cat": "webgl-text", "src": "webgl", "thumb": "_thumbs/webgl_text_cosmic-glow.jpg", "title": "Космическое свечение", "title_en": "Cosmic glow", "desc": "Светящийся сине-фиолетовый заголовок с аберрацией и строками кинескопа.", "desc_en": "A glowing blue and violet headline with aberration and CRT lines."}, {"file": "webgl/text/stretch-tunnel.html", "cat": "webgl-text", "src": "webgl", "thumb": "_thumbs/webgl_text_stretch-tunnel.jpg", "title": "Туннель растяжения", "title_en": "Stretch tunnel", "desc": "Строки текста растягиваются к краям в световые полосы.", "desc_en": "Lines of text stretch towards the edges into streaks of light."}, {"file": "webgl/text/intro-reveal.html", "cat": "webgl-text", "src": "webgl", "thumb": "_thumbs/webgl_text_intro-reveal.jpg", "title": "Интро логотипа", "title_en": "Logo intro", "desc": "Размытое цветное слово собирается в чёткий логотип с лучами и подписью Introducing. Есть кнопка повтора.", "desc_en": "A blurred coloured word resolves into a sharp logo with rays and an \"Introducing\" caption. Has a replay button."}, {"file": "webgl/text/pixel-wipe.html", "cat": "webgl-text", "src": "webgl", "thumb": "_thumbs/webgl_text_pixel-wipe.jpg", "title": "Пиксельная шторка", "title_en": "Pixel wipe", "desc": "Блочный пиксельный заголовок проявляется шторкой с дизерингом.", "desc_en": "A blocky pixel headline appears through a dithered wipe."}, {"file": "webgl/text/liquid-chrome.html", "cat": "webgl-text", "src": "webgl", "thumb": "_thumbs/webgl_text_liquid-chrome.jpg", "title": "Жидкий хром", "title_en": "Liquid chrome", "desc": "Хромовая надпись, по которой бегут каустические блики. Мышь оставляет рябь.", "desc_en": "Chrome lettering with caustic highlights running across it. The mouse leaves ripples."}, {"file": "webgl/text/refracted-wordmark.html", "cat": "webgl-text", "src": "webgl", "thumb": "_thumbs/webgl_text_refracted-wordmark.jpg", "title": "Надпись сквозь силуэт", "title_en": "Wordmark through a silhouette", "desc": "Профиль на синем фоне, светящееся слово преломляется внутри силуэта.", "desc_en": "A profile on blue; a glowing word is refracted inside the silhouette."}, {"file": "webgl/text/glass-block.html", "cat": "webgl-text", "src": "webgl", "thumb": "_thumbs/webgl_text_glass-block.jpg", "title": "Стеклянный блок за мышью", "title_en": "Glass block following the cursor", "desc": "Повторяющийся заголовок на синем, за курсором плывёт стеклянный блок с небом внутри.", "desc_en": "A repeated headline on blue with a glass block full of sky following the cursor."}, {"file": "webgl/image/vhs-ink-bust.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_vhs-ink-bust.jpg", "title": "VHS-статуя и чернильный след", "title_en": "VHS statue and ink trail", "desc": "Чёрно-белый бюст с VHS-помехами, мышь размазывает чёрные чернила. Можно подставить своё фото или видео.", "desc_en": "A black-and-white bust with VHS noise; the mouse smears black ink. Use your own photo or video."}, {"file": "webgl/image/xray-gallery.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_xray-gallery.jpg", "title": "Рентген-галерея", "title_en": "X-ray gallery", "desc": "Коллаж карточек с рамками распознавания, в местах перекрытия картинка становится негативом. Карточки перетаскиваются, на каждую можно бросить фото.", "desc_en": "A collage of cards with detection frames; where they overlap the image turns negative. Cards can be dragged, and each accepts a dropped photo."}, {"file": "webgl/image/halftone-glitch.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_halftone-glitch.jpg", "title": "Полутон с глитчем", "title_en": "Halftone glitch", "desc": "Поле цветов в сине-лаймовом полутоне, мышь меняет размытие. Своё фото или видео.", "desc_en": "A field of flowers in blue and lime halftone; the mouse changes the blur. Your photo or video."}, {"file": "webgl/image/vhs-bands.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_vhs-bands.jpg", "title": "VHS-полосы", "title_en": "VHS bands", "desc": "Портрет, по которому скользят полосы VHS-шума с размытием. Своё фото или видео.", "desc_en": "A portrait swept by bands of VHS noise with blur. Your photo or video."}, {"file": "webgl/image/paper-relief.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_paper-relief.jpg", "title": "Бумажный рельеф", "title_en": "Paper relief", "desc": "Белый рельеф с голубями и цветами проявляется и исчезает шумовой маской под заголовком.", "desc_en": "A white relief of doves and flowers appears and vanishes through a noise mask under a headline."}, {"file": "webgl/image/color-light-portrait.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_color-light-portrait.jpg", "title": "Цветной свет на портрете", "title_en": "Coloured light on a portrait", "desc": "По лицу скользят розовый, синий и жёлтый свет, сзади крупный заголовок. Своё фото.", "desc_en": "Pink, blue and yellow light glides across a face, a large headline behind. Your photo."}, {"file": "webgl/image/shatter-hero.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_shatter-hero.jpg", "title": "Разбитый портрет", "title_en": "Shattered portrait", "desc": "Часть портрета рассыпается на осколки с аберрацией, сверху огромный заголовок и интерфейс. Своё фото.", "desc_en": "Part of a portrait shatters into shards with aberration, under a huge headline and interface. Your photo."}, {"file": "webgl/image/zoom-lens-product.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_zoom-lens-product.jpg", "title": "Линза с зум-размытием", "title_en": "Zoom-blur lens", "desc": "Хромовая бутылка в студии, по кадру плывёт светящаяся линза с радиальным размытием. Своё фото товара.", "desc_en": "A chrome bottle in a studio; a glowing lens with radial blur drifts across. Your product photo."}, {"file": "webgl/image/leaf-shadows.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_leaf-shadows.jpg", "title": "Тени листьев", "title_en": "Leaf shadows", "desc": "Профиль на розовом с тенями пальмовых листьев, светящаяся серьга и крупные цифры по бокам.", "desc_en": "A profile on pink with palm leaf shadows, a glowing earring and large numbers at the sides."}, {"file": "webgl/image/caustic-postcard.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_caustic-postcard.jpg", "title": "Открытка в солнечных бликах", "title_en": "Postcard in caustics", "desc": "Наклонённая фотооткрытка с полутоном на фоне каустики солнца. Своё фото.", "desc_en": "A tilted halftone photo postcard over sunlit caustics. Your photo."}, {"file": "webgl/image/neon-outline-sweep.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_neon-outline-sweep.jpg", "title": "Неоновый контур", "title_en": "Neon outline sweep", "desc": "По фото товара проходит маска: пиксели и неоновая обводка краёв. Своё фото.", "desc_en": "A mask sweeps across a product photo: pixels and a neon edge outline. Your photo."}, {"file": "webgl/image/glass-lens.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_glass-lens.jpg", "title": "Стеклянная лупа", "title_en": "Glass magnifier", "desc": "Стеклянный круг плывёт над фото, увеличивает, размывает и преломляет. Своё фото.", "desc_en": "A glass disc drifts over a photo, magnifying, blurring and refracting it. Your photo."}, {"file": "webgl/image/pixel-mask.html", "cat": "webgl-image", "src": "webgl", "thumb": "_thumbs/webgl_image_pixel-mask.jpg", "title": "Пиксельная шахматная маска", "title_en": "Checkered pixel mask", "desc": "Фото разбивают сине-фиолетовые квадраты, у курсора их больше. Своё фото или видео.", "desc_en": "Blue and violet squares break up the photo, more of them near the cursor. Your photo or video."}, {"file": "webgl/dither/glyph-liquid.html", "cat": "webgl-dither", "src": "webgl", "thumb": "_thumbs/webgl_dither_glyph-liquid.jpg", "title": "Жидкий шум символами", "title_en": "Liquid glyph noise", "desc": "Перетекающий фиолетово-синий шум, нарисованный ASCII-символами со строками.", "desc_en": "Flowing violet and blue noise drawn with ASCII characters and scan lines."}, {"file": "webgl/dither/noise-ribbons.html", "cat": "webgl-dither", "src": "webgl", "thumb": "_thumbs/webgl_dither_noise-ribbons.jpg", "title": "Ленты синего шума", "title_en": "Blue noise ribbons", "desc": "Тёмные ленты из точек на песочном фоне в тонкой рамке с подписью.", "desc_en": "Dark dotted ribbons on a sand background in a thin frame with a caption."}, {"file": "webgl/dither/iridescent-ribbon.html", "cat": "webgl-dither", "src": "webgl", "thumb": "_thumbs/webgl_dither_iridescent-ribbon.jpg", "title": "Радужная лента точками", "title_en": "Iridescent dotted ribbon", "desc": "Переливающаяся лента из точек волнится по диагонали на белом.", "desc_en": "An iridescent dotted ribbon waves diagonally on white."}, {"file": "webgl/dither/pop-art.html", "cat": "webgl-dither", "src": "webgl", "thumb": "_thumbs/webgl_dither_pop-art.jpg", "title": "Поп-арт дизеринг", "title_en": "Pop-art dithering", "desc": "Портрет в крупных кружках и символах синего, оранжевого и жёлтого. Своё фото или видео.", "desc_en": "A portrait in large circles and glyphs of blue, orange and yellow. Your photo or video."}, {"file": "webgl/dither/leaf-garden.html", "cat": "webgl-dither", "src": "webgl", "thumb": "_thumbs/webgl_dither_leaf-garden.jpg", "title": "Сад из символов", "title_en": "Glyph garden", "desc": "Листья, нарисованные символьным дизерингом, над крупным заголовком, с VHS-сдвигами.", "desc_en": "Leaves drawn with glyph dithering above a large headline, with VHS shifts."}, {"file": "webgl/dither/sparse-dots.html", "cat": "webgl-dither", "src": "webgl", "thumb": "_thumbs/webgl_dither_sparse-dots.jpg", "title": "Редкие точки по карте", "title_en": "Sparse dots on a map", "desc": "Оранжево-фиолетовые точки загораются по контурам материков там, где проходит свет.", "desc_en": "Orange and violet dots light up along the continents where the light passes."}, {"file": "webgl/dither/dither-torus.html", "cat": "webgl-dither", "src": "webgl", "thumb": "_thumbs/webgl_dither_dither-torus.jpg", "title": "Тор из символов", "title_en": "Glyph torus", "desc": "Вращающийся голубой тор в символьном дизеринге на ярко-синем.", "desc_en": "A rotating light blue torus in glyph dithering on bright blue."}, {"file": "webgl/dither/green-screen-portrait.html", "cat": "webgl-dither", "src": "webgl", "thumb": "_thumbs/webgl_dither_green-screen-portrait.jpg", "title": "Портрет на зелёном экране", "title_en": "Green-screen portrait", "desc": "Дизеринг-портрет на зелёной панели с волнистым краем и бегущей подписью. Своё фото или видео.", "desc_en": "A dithered portrait on a green panel with a wavy edge and a running caption. Your photo or video."}, {"file": "webgl/dither/swirl-glyph.html", "cat": "webgl-dither", "src": "webgl", "thumb": "_thumbs/webgl_dither_swirl-glyph.jpg", "title": "Вихрь из символов", "title_en": "Glyph swirl", "desc": "Изображение в символах закручивается вихрем у курсора и раскручивается. Своё фото или видео.", "desc_en": "An image in glyphs swirls into a vortex at the cursor and unwinds. Your photo or video."}, {"file": "webgl/mouse/neon-smear-text.html", "cat": "webgl-mouse", "src": "webgl", "thumb": "_thumbs/webgl_mouse_neon-smear-text.jpg", "title": "Неоновое размазывание", "title_en": "Neon smear", "desc": "Огромный заголовок, мышь размазывает его зелёным неоновым светом.", "desc_en": "A huge headline that the mouse smears with green neon light."}, {"file": "webgl/mouse/pixel-blotch.html", "cat": "webgl-mouse", "src": "webgl", "thumb": "_thumbs/webgl_mouse_pixel-blotch.jpg", "title": "Пиксельное пятно", "title_en": "Pixel blotch", "desc": "Жёлтое пиксельное пятно следует за мышью и расползается от скорости. Своё фото или видео.", "desc_en": "A yellow pixel blotch follows the mouse and spreads with speed. Your photo or video."}, {"file": "webgl/mouse/bokeh-ring.html", "cat": "webgl-mouse", "src": "webgl", "thumb": "_thumbs/webgl_mouse_bokeh-ring.jpg", "title": "Кольцо боке", "title_en": "Bokeh ring", "desc": "Кольцо красно-розовых огней, мышь разбрасывает их в шлейфы.", "desc_en": "A ring of red and pink lights that the mouse scatters into trails."}, {"file": "webgl/mouse/koi-pond.html", "cat": "webgl-mouse", "src": "webgl", "thumb": "_thumbs/webgl_mouse_koi-pond.jpg", "title": "Пруд с карпами", "title_en": "Koi pond", "desc": "Крупные карпы в мягком фокусе кружат в тёмной воде, мышь пускает по ней круги.", "desc_en": "Large soft-focus koi circle in dark water; the mouse sends ripples across it."}, {"file": "webgl/mouse/embossed-warp.html", "cat": "webgl-mouse", "src": "webgl", "thumb": "_thumbs/webgl_mouse_embossed-warp.jpg", "title": "Рельефная надпись", "title_en": "Embossed script", "desc": "Выдавленная надпись прописью, мышь продавливает её как песок.", "desc_en": "Embossed script lettering that the mouse presses in like sand."}, {"file": "webgl/mouse/gradient-reveal.html", "cat": "webgl-mouse", "src": "webgl", "thumb": "_thumbs/webgl_mouse_gradient-reveal.jpg", "title": "Смена градиент-карты", "title_en": "Gradient map reveal", "desc": "Портрет в кислотной градиент-карте, мышь открывает другую палитру. Своё фото или видео.", "desc_en": "A portrait in an acid gradient map; the mouse reveals another palette. Your photo or video."}, {"file": "webgl/mouse/ink.html", "cat": "webgl-mouse", "src": "webgl", "thumb": "_thumbs/webgl_mouse_ink.jpg", "title": "Акварельные чернила", "title_en": "Watercolour ink", "desc": "Мышь рисует красными чернилами, они растекаются и медленно бледнеют. Цвет и очистка.", "desc_en": "The mouse paints with red ink that spreads and slowly fades. Colour and clear controls."}, {"file": "webgl/mouse/holo-reveal-text.html", "cat": "webgl-mouse", "src": "webgl", "thumb": "_thumbs/webgl_mouse_holo-reveal-text.jpg", "title": "Голографическое проявление", "title_en": "Holographic reveal", "desc": "Контурные строки текста, мышь проявляет залитые голографические буквы.", "desc_en": "Outlined lines of text; the mouse reveals filled holographic letters."}, {"file": "webgl/retro/crt-tv.html", "cat": "webgl-retro", "src": "webgl", "thumb": "_thumbs/webgl_retro_crt-tv.jpg", "title": "Ретро-телевизор", "title_en": "Retro TV", "desc": "Кинескопный телевизор в 3D покачивается, на выпуклом экране крутятся слова и рисуется каракуля.", "desc_en": "A 3D tube TV sways while words spin and a scribble draws on its curved screen."}, {"file": "webgl/retro/crt-terminal.html", "cat": "webgl-retro", "src": "webgl", "thumb": "_thumbs/webgl_retro_crt-terminal.jpg", "title": "Терминал на кинескопе", "title_en": "CRT terminal", "desc": "Выпуклый экран с бегущим кодом, строками развёртки и глитчем.", "desc_en": "A curved screen with scrolling code, scan lines and glitches."}, {"file": "webgl/retro/neon-tunnel.html", "cat": "webgl-retro", "src": "webgl", "thumb": "_thumbs/webgl_retro_neon-tunnel.jpg", "title": "Неоновый туннель", "title_en": "Neon tunnel", "desc": "Синие прямоугольники вспыхивают и летят на зрителя.", "desc_en": "Blue rectangles flash and fly at the viewer."}, {"file": "webgl/retro/glitch-bands.html", "cat": "webgl-retro", "src": "webgl", "thumb": "_thumbs/webgl_retro_glitch-bands.jpg", "title": "Глитч-полосы", "title_en": "Glitch bands", "desc": "Горизонтальные полутоновые полосы дёргаются над огромным заголовком.", "desc_en": "Horizontal halftone bands twitch above a huge headline."}, {"file": "webgl/retro/lofi-clouds.html", "cat": "webgl-retro", "src": "webgl", "thumb": "_thumbs/webgl_retro_lofi-clouds.jpg", "title": "Лоу-фай облака", "title_en": "Lo-fi clouds", "desc": "Пиксельные облака за белой карточкой с заголовком.", "desc_en": "Pixel clouds behind a white card with a headline."}, {"file": "webgl/retro/glow-screen.html", "cat": "webgl-retro", "src": "webgl", "thumb": "_thumbs/webgl_retro_glow-screen.jpg", "title": "Светящийся экран", "title_en": "Glowing screen", "desc": "Маленький ретро-экран с пиксельным логотипом светится и отражается в полу.", "desc_en": "A small retro screen with a pixel logo glows and reflects in the floor."}, {"file": "webgl/generative/orbit-rings.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_orbit-rings.jpg", "title": "Орбиты колец", "title_en": "Orbit rings", "desc": "Тонкие кольца кружат и пересекаются, в точках пересечения вспыхивают узлы.", "desc_en": "Thin rings circle and cross, with nodes flashing where they intersect."}, {"file": "webgl/generative/metaballs.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_metaballs.jpg", "title": "Орбитальные метаболы", "title_en": "Orbital metaballs", "desc": "Два вихря персиковых капель по золотой спирали вращаются навстречу и сливаются.", "desc_en": "Two swirls of peach droplets on a golden spiral rotate towards each other and merge."}, {"file": "webgl/generative/contour-map.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_contour-map.jpg", "title": "Топографическая карта", "title_en": "Topographic map", "desc": "Изолинии рельефа на тёмно-синем, мышь поднимает холм.", "desc_en": "Contour lines on dark blue; the mouse raises a hill."}, {"file": "webgl/generative/galaxy.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_galaxy.jpg", "title": "Спиральная галактика", "title_en": "Spiral galaxy", "desc": "Красная галактика закручивается на чёрном.", "desc_en": "A red galaxy spirals on black."}, {"file": "webgl/generative/smoke-wave.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_smoke-wave.jpg", "title": "Волна дыма", "title_en": "Smoke wave", "desc": "Светящаяся волна дыма с пиксельными блоками-рамками в тёмной карточке.", "desc_en": "A glowing wave of smoke with pixel frame blocks in a dark card."}, {"file": "webgl/generative/kaleido-shards.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_kaleido-shards.jpg", "title": "Калейдоскоп осколков", "title_en": "Kaleidoscope shards", "desc": "Симметричные бирюзово-оранжевые осколки с подписями по бокам.", "desc_en": "Symmetric teal and orange shards with captions at the sides."}, {"file": "webgl/generative/orbital-aurora.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_orbital-aurora.jpg", "title": "Сияние с орбиты", "title_en": "Aurora from orbit", "desc": "Ночная сторона планеты с огнями городов и пиксельным зелёным сиянием, мышь добавляет след.", "desc_en": "The night side of a planet with city lights and a pixel green aurora; the mouse adds a trail."}, {"file": "webgl/generative/noise-ring.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_noise-ring.jpg", "title": "Шумовое кольцо с трекингом", "title_en": "Noise ring with tracking", "desc": "Серое шумовое кольцо в белой карточке с линиями и рамками трекинга.", "desc_en": "A grey noise ring in a white card with tracking lines and frames."}, {"file": "webgl/generative/red-sunset.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_red-sunset.jpg", "title": "Красный закат", "title_en": "Red sunset", "desc": "Солнце садится за слои гор, туман и лучи, лёгкий параллакс от мыши.", "desc_en": "The sun sets behind layers of mountains, mist and rays, with slight mouse parallax."}, {"file": "webgl/generative/foggy-bridge.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_foggy-bridge.jpg", "title": "Мост в тумане", "title_en": "Bridge in the fog", "desc": "Подвесной мост в пастельном тумане с огнями машин.", "desc_en": "A suspension bridge in pastel fog with car lights."}, {"file": "webgl/generative/candy-kaleido.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_candy-kaleido.jpg", "title": "Леденцовый калейдоскоп", "title_en": "Candy kaleidoscope", "desc": "Пастельная 3D-капля в круговом калейдоскопе на тёмно-фиолетовом.", "desc_en": "A pastel 3D blob in a circular kaleidoscope on dark violet."}, {"file": "webgl/generative/nebula-bowl.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_nebula-bowl.jpg", "title": "Чаша туманности", "title_en": "Nebula bowl", "desc": "Жидкая фиолетово-голубая поверхность изгибается чашей.", "desc_en": "A liquid violet and blue surface curves into a bowl."}, {"file": "webgl/generative/lightning-hero.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_lightning-hero.jpg", "title": "Молния в руке", "title_en": "Lightning in hand", "desc": "Фигура на скале поднимает молнию, облака и туман, параллакс от мыши.", "desc_en": "A figure on a rock raises lightning, with clouds, mist and mouse parallax."}, {"file": "webgl/generative/aurora-silhouette.html", "cat": "webgl-generative", "src": "webgl", "thumb": "_thumbs/webgl_generative_aurora-silhouette.jpg", "title": "Сияние сквозь силуэт", "title_en": "Aurora through a silhouette", "desc": "Сине-оранжевые ленты света проходят сквозь силуэт профиля. Можно загрузить свой силуэт.", "desc_en": "Blue and orange ribbons of light pass through a profile silhouette. Load your own silhouette."}, {"file": "webgl/hero/branding-strip.html", "cat": "webgl-hero", "src": "webgl", "thumb": "_thumbs/webgl_hero_branding-strip.jpg", "title": "Лента брендинга", "title_en": "Branding strip", "desc": "Интро с полосатым градиентом, затем изогнутая 3D-лента с постерами под заголовком.", "desc_en": "An intro with a striped gradient, then a curved 3D strip of posters under a headline."}, {"file": "webgl/hero/product-tease.html", "cat": "webgl-hero", "src": "webgl", "thumb": "_thumbs/webgl_hero_product-tease.jpg", "title": "Тизер интерфейса", "title_en": "Interface teaser", "desc": "Наклонённый в 3D макет приложения панорамируется в лучах света, в конце заголовок. Чистый CSS.", "desc_en": "A tilted 3D app mock-up pans through beams of light and ends on a headline. Pure CSS."}, {"file": "webgl/hero/data-blocks.html", "cat": "webgl-hero", "src": "webgl", "thumb": "_thumbs/webgl_hero_data-blocks.jpg", "title": "Блоки данных", "title_en": "Data blocks", "desc": "Над заголовком мерцают голубые блоки данных и линии трекинга.", "desc_en": "Blue data blocks and tracking lines flicker above a headline."}, {"file": "webgl/hero/golden-arch.html", "cat": "webgl-hero", "src": "webgl", "thumb": "_thumbs/webgl_hero_golden-arch.jpg", "title": "Золотая арка", "title_en": "Golden arch", "desc": "Тёмный первый экран с кнопкой, внизу мерцает арка из золотых частиц.", "desc_en": "A dark hero with a button and a shimmering arch of golden particles below."}, {"file": "webgl/hero/stipple-beam.html", "cat": "webgl-hero", "src": "webgl", "thumb": "_thumbs/webgl_hero_stipple-beam.jpg", "title": "Луч над конвейером", "title_en": "Beam over a conveyor", "desc": "Точечные строки едут влево и вправо, центральный луч их подсвечивает.", "desc_en": "Stippled lines move left and right while a central beam lights them up."}, {"file": "webgl/hero/ai-orb-loader.html", "cat": "webgl-hero", "src": "webgl", "thumb": "_thumbs/webgl_hero_ai-orb-loader.jpg", "title": "AI-загрузчик", "title_en": "AI loader orb", "desc": "Тёмная таблетка «Creating…» с живым фиолетовым шаром туманности.", "desc_en": "A dark \"Creating…\" pill with a living violet nebula orb."}, {"file": "webgl/hero/liquid-glass-orb.html", "cat": "webgl-hero", "src": "webgl", "thumb": "_thumbs/webgl_hero_liquid-glass-orb.jpg", "title": "Стеклянная капля при прокрутке", "title_en": "Liquid glass on scroll", "desc": "Капля жидкого стекла растёт и сжимается от прокрутки, преломляя фон радугой.", "desc_en": "A drop of liquid glass grows and shrinks with scroll, refracting the background into a rainbow."}, {"file": "webgl/gallery/rolling-strip.html", "cat": "webgl-gallery", "src": "webgl", "thumb": "_thumbs/webgl_gallery_rolling-strip.jpg", "title": "Катящаяся галерея", "title_en": "Rolling gallery", "desc": "Лента карточек катится по изогнутой поверхности, у краёв карточки рассыпаются на пиксели. Колесо ускоряет.", "desc_en": "A strip of cards rolls over a curved surface and breaks into pixels at the edges. The wheel speeds it up."}, {"file": "webgl/gallery/pixel-scroll.html", "cat": "webgl-gallery", "src": "webgl", "thumb": "_thumbs/webgl_gallery_pixel-scroll.jpg", "title": "Галерея с пиксельными переходами", "title_en": "Gallery with pixel transitions", "desc": "Горизонтальная лента карточек, при быстрой прокрутке они пикселизуются и скругляются. Колесо и перетаскивание.", "desc_en": "A horizontal strip of cards that pixelate and round off when scrolled fast. Wheel and drag."}], "cats": [["text", "Текст", "Text"], ["scroll", "Прокрутка", "Scroll"], ["page-transitions", "Переходы страниц", "Page transitions"], ["carousel", "Карусели", "Carousels"], ["ticker", "Бегущая строка", "Tickers"], ["cursor", "Курсор", "Cursor"], ["buttons", "Кнопки", "Buttons"], ["navigation", "Навигация", "Navigation"], ["overlays", "Всплывающие окна", "Overlays"], ["layout", "Раскладка и списки", "Layout and lists"], ["loading", "Загрузка", "Loading"], ["forms", "Формы", "Forms"], ["interactions", "Взаимодействия", "Interactions"], ["charts", "Графики", "Charts"], ["basics", "Основы", "Basics"], ["hero", "Первый экран", "Hero sections"], ["experimental", "Эксперименты", "Experiments"], ["webgl-gradients", "Градиенты и фоны", "Gradients and backgrounds"], ["webgl-light", "Свет и свечение", "Light and glow"], ["webgl-3d", "3D-объекты", "3D objects"], ["webgl-text", "Текст", "Text"], ["webgl-image", "Эффекты для фото", "Photo effects"], ["webgl-dither", "Дизеринг и пиксели", "Dithering and pixels"], ["webgl-mouse", "Реакция на мышь", "Mouse-reactive"], ["webgl-retro", "Ретро-экраны", "Retro screens"], ["webgl-generative", "Генеративные сцены", "Generative scenes"], ["webgl-hero", "Первые экраны и UI", "Hero sections and UI"], ["webgl-gallery", "Галереи", "Galleries"]]}</script>
+<script>
+function shader(opt = {}) {
+  const canvas = typeof opt.canvas === 'string' ? document.querySelector(opt.canvas) : opt.canvas || document.querySelector('canvas[data-gl]');
+  const gl = canvas.getContext('webgl2', { antialias: false, alpha: !!opt.alpha, premultipliedAlpha: false, preserveDrawingBuffer: !!opt.preserve, powerPreference: 'high-performance' });
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const embed = /[?&]embed\b/.test(location.search);
+  if (embed) document.documentElement.classList.add('embed');
+  if (!gl) {
+    const p = document.createElement('p');
+    p.className = 'gl-fallback';
+    p.textContent = 'WebGL 2 is not available in this browser.';
+    canvas.replaceWith(p);
+    return null;
+  }
+  const halfFloat = !!gl.getExtension('EXT_color_buffer_float');
+  const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
+  const pixelated = !!opt.pixelated;
+  const dens = (opt.dpr ?? (pixelated ? 1 : 2)) * (opt.scale ?? 1);
+  const adaptive = (opt.adaptive ?? !pixelated) && !reduce;
+  const qMin = opt.minQuality ?? Math.min(1, Math.max(.3, .75 / dens));
+  let raf = 0, cssW = 0, cssH = 0, cw = 0, ch = 0, W1 = 0, H1 = 0, W = 0, H = 0, q = 1, fade = opt.fade !== false && !reduce && !embed ? -1 : 0, lost = false;
+  let time = +(new URLSearchParams(location.search).get('t') ?? opt.start ?? 0), last = performance.now(), frame = 0, visible = true, paused = false, speed = 1;
+  const HEAD = `#version 300 es
+precision highp float;
+precision highp int;
+uniform vec2 uRes;
+uniform vec2 uView;
+uniform float uPx;
+uniform float uTime;
+uniform float uDt;
+uniform int uFrame;
+uniform vec2 uMouse;
+uniform vec2 uMouseRaw;
+uniform vec2 uMouseLast;
+uniform vec2 uVel;
+uniform float uDown;
+uniform float uHover;
+uniform sampler2D uPrev;
+in vec2 vUv;
+out vec4 o;
+`;
+  const compile = (type, code) => {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, code);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+      const log = gl.getShaderInfoLog(sh);
+      console.error(log + '\n' + code.split('\n').map((l, i) => `${i + 1}: ${l}`).join('\n'));
+      throw new Error('Shader compile failed: ' + log);
+    }
+    return sh;
+  };
+  const vs = compile(gl.VERTEX_SHADER, '#version 300 es\nin vec2 p;\nout vec2 vUv;\nvoid main() { vUv = p * .5 + .5; gl_Position = vec4(p, 0., 1.); }');
+  const source = (s) => {
+    const el = /^[\w-]+$/.test(s) ? document.getElementById(s) : null;
+    return el ? el.textContent : s;
+  };
+  const link = (code) => {
+    const p = gl.createProgram();
+    gl.attachShader(p, vs);
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, code));
+    gl.bindAttribLocation(p, 0, 'p');
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    const u = {};
+    const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < n; i++) {
+      const a = gl.getActiveUniform(p, i);
+      u[a.name.replace(/\[0\]$/, '')] = { loc: gl.getUniformLocation(p, a.name), type: a.type };
+    }
+    return { p, u };
+  };
+  const program = (fs) => link(HEAD + source(fs));
+  const present = link(`#version 300 es
+precision highp float;
+uniform sampler2D uSrc;
+uniform vec2 uSrcSize;
+uniform int uMode;
+in vec2 vUv;
+out vec4 o;
+vec4 cubic(vec2 uv) {
+  vec2 sp = uv * uSrcSize - .5, tp = floor(sp) + .5, f = sp - floor(sp);
+  vec2 w0 = f * (-.5 + f * (1. - .5 * f)), w1 = 1. + f * f * (-2.5 + 1.5 * f), w2 = f * (.5 + f * (2. - 1.5 * f)), w3 = f * f * (-.5 + .5 * f);
+  vec2 w12 = w1 + w2, t0 = (tp - 1.) / uSrcSize, t3 = (tp + 2.) / uSrcSize, t12 = (tp + w2 / w12) / uSrcSize;
+  vec4 r = (texture(uSrc, vec2(t0.x, t0.y)) * w0.x + texture(uSrc, vec2(t12.x, t0.y)) * w12.x + texture(uSrc, vec2(t3.x, t0.y)) * w3.x) * w0.y
+    + (texture(uSrc, vec2(t0.x, t12.y)) * w0.x + texture(uSrc, vec2(t12.x, t12.y)) * w12.x + texture(uSrc, vec2(t3.x, t12.y)) * w3.x) * w12.y
+    + (texture(uSrc, vec2(t0.x, t3.y)) * w0.x + texture(uSrc, vec2(t12.x, t3.y)) * w12.x + texture(uSrc, vec2(t3.x, t3.y)) * w3.x) * w3.y;
+  return max(r, 0.);
+}
+float h(vec2 p) { vec3 q = fract(vec3(p.xyx) * .1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+void main() {
+  vec4 c = uMode == 2 ? texelFetch(uSrc, ivec2(min(vUv * uSrcSize, uSrcSize - 1.)), 0) : uMode == 1 ? cubic(vUv) : texture(uSrc, vUv);
+  c.rgb += (h(gl_FragCoord.xy) + h(gl_FragCoord.xy + 71.3) - 1.) / 255.;
+  o = c;
+}`);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+  const makeTex = (filter, wrap, mips) => {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    const f = filter === 'nearest' ? gl.NEAREST : gl.LINEAR;
+    const w = wrap === 'repeat' ? gl.REPEAT : wrap === 'mirror' ? gl.MIRRORED_REPEAT : gl.CLAMP_TO_EDGE;
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mips ? (f === gl.NEAREST ? gl.NEAREST_MIPMAP_LINEAR : gl.LINEAR_MIPMAP_LINEAR) : f);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, w);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, w);
+    if (mips && aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+    return t;
+  };
+  const blank = makeTex();
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+  const textures = {};
+  const upload = (t) => {
+    const s = t.source;
+    if (!s) return;
+    if (s instanceof HTMLVideoElement && s.readyState < 2) return;
+    if (s instanceof HTMLImageElement && !s.complete) return;
+    gl.bindTexture(gl.TEXTURE_2D, t.tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, s);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    if (t.mips) gl.generateMipmap(gl.TEXTURE_2D);
+    t.size = [s.videoWidth || s.naturalWidth || s.width, s.videoHeight || s.naturalHeight || s.height];
+    t.ready = true;
+    t.dirty = false;
+  };
+  const tex = (name, src, o = {}) => {
+    const t = textures[name] || (textures[name] = { tex: makeTex(o.filter, o.wrap, o.mips) });
+    if (o.filter || o.wrap || o.mips !== undefined) {
+      gl.deleteTexture(t.tex);
+      t.tex = makeTex(o.filter, o.wrap, o.mips);
+      t.mips = !!o.mips;
+    }
+    t.source = src;
+    t.dynamic = o.dynamic ?? src instanceof HTMLVideoElement;
+    if (src instanceof HTMLImageElement && !src.complete) src.addEventListener('load', () => { t.dirty = true; kick(); }, { once: true });
+    upload(t);
+    kick();
+    return t;
+  };
+  Object.entries(opt.textures || {}).forEach(([k, v]) => (v && v.source !== undefined ? tex(k, v.source, v) : tex(k, v)));
+
+  const passes = (opt.passes || [{ fs: opt.fs || 'main' }]).map((c, i) => ({ ...c, id: c.id || `pass${i}`, prog: program(c.fs), fbo: [], cur: 0, out: blank, w: 0, h: 0 }));
+  const fin = passes[passes.length - 1];
+  if (!fin.offscreen) {
+    fin.float = fin.float ?? true;
+    if (pixelated) fin.filter = 'nearest';
+  }
+  const makeTarget = (w, h, ps) => {
+    const t = makeTex(ps.filter, ps.wrap);
+    const float = ps.float && halfFloat;
+    gl.texImage2D(gl.TEXTURE_2D, 0, float ? gl.RGBA16F : gl.RGBA8, w, h, 0, gl.RGBA, float ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE, null);
+    const fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    gl.viewport(0, 0, w, h);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    return { tex: t, fb };
+  };
+  const alloc = (ps) => {
+    const s = ps.size ?? 1;
+    const [w, h] = (typeof s === 'function' ? s(W, H) : Array.isArray(s) ? s : [W * s, H * s]).map((x) => Math.max(1, Math.round(x)));
+    if (ps.fbo.length && ps.w === w && ps.h === h) return;
+    const old = ps.fbo, ow = ps.w, oh = ps.h;
+    ps.fbo = Array.from({ length: ps.feedback ? 2 : 1 }, () => makeTarget(w, h, ps));
+    if (old.length && ps.feedback && ps.keep !== false) {
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, old[ps.cur].fb);
+      for (const f of ps.fbo) {
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, f.fb);
+        gl.blitFramebuffer(0, 0, ow, oh, 0, 0, w, h, gl.COLOR_BUFFER_BIT, gl.LINEAR);
+      }
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    }
+    old.forEach((f) => { gl.deleteTexture(f.tex); gl.deleteFramebuffer(f.fb); });
+    ps.w = w;
+    ps.h = h;
+    ps.cur = 0;
+    ps.out = ps.fbo[0].tex;
+  };
+
+  const values = { ...(opt.uniforms || {}) };
+  const hex = (s) => {
+    const n = parseInt(s.slice(1), 16);
+    return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
+  };
+  const setUniform = (u, v) => {
+    if (typeof v === 'function') v = v();
+    const a = typeof v === 'string' ? hex(v) : Array.isArray(v) ? v.flat(2).map((x) => (typeof x === 'string' ? hex(x) : x)).flat() : [+v];
+    switch (u.type) {
+      case gl.FLOAT: gl.uniform1fv(u.loc, a); break;
+      case gl.FLOAT_VEC2: gl.uniform2fv(u.loc, a); break;
+      case gl.FLOAT_VEC3: gl.uniform3fv(u.loc, a); break;
+      case gl.FLOAT_VEC4: gl.uniform4fv(u.loc, a); break;
+      case gl.INT: case gl.BOOL: gl.uniform1iv(u.loc, a.map((x) => Math.round(x))); break;
+      case gl.FLOAT_MAT2: gl.uniformMatrix2fv(u.loc, false, a); break;
+      case gl.FLOAT_MAT3: gl.uniformMatrix3fv(u.loc, false, a); break;
+      case gl.FLOAT_MAT4: gl.uniformMatrix4fv(u.loc, false, a); break;
+    }
+  };
+
+  const m = { x: .5, y: .5, rx: .5, ry: .5, px: .5, py: .5, lx: .5, ly: .5, ux: .5, uy: .5, vx: 0, vy: 0, down: 0, inside: 0, h: 0, moved: -1e9, auto: false };
+  const toLocal = (e) => {
+    const r = canvas.getBoundingClientRect();
+    m.rx = (e.clientX - r.left) / r.width;
+    m.ry = 1 - (e.clientY - r.top) / r.height;
+    m.inside = m.rx >= 0 && m.rx <= 1 && m.ry >= 0 && m.ry <= 1 ? 1 : 0;
+    m.moved = performance.now();
+    m.auto = false;
+    kick();
+  };
+  addEventListener('pointermove', toLocal, { passive: true });
+  addEventListener('pointerdown', (e) => { toLocal(e); m.down = 1; });
+  addEventListener('pointerup', () => { m.down = 0; });
+  addEventListener('pointercancel', () => { m.down = 0; });
+  document.documentElement.addEventListener('pointerleave', () => { m.inside = 0; });
+
+  const still = opt.still ?? 2;
+  if (reduce) time = still;
+  const g = { ema: 16.7, run: 0, changed: 0, wait: 2000, probe: 0 };
+  const fit = () => {
+    W1 = Math.max(1, Math.round(cssW * dens));
+    H1 = Math.max(1, Math.round(cssH * dens));
+    W = Math.max(1, Math.round(W1 * q));
+    H = Math.max(1, Math.round(H1 * q));
+    passes.forEach(alloc);
+  };
+  const setQ = (v, now) => {
+    q = v;
+    g.changed = now;
+    g.run = 0;
+    g.ema = 16.7;
+    fit();
+  };
+  function govern(ms, now) {
+    if (!adaptive) return;
+    if (ms > 250) { g.run = 0; return; }
+    if (++g.run < 6) return;
+    g.ema += (ms - g.ema) * .1;
+    if (now - g.changed < 700) return;
+    if (g.ema > 21 && q > qMin) {
+      if (g.probe && now - g.probe < 3500) g.wait = Math.min(g.wait * 2, 40000);
+      g.probe = 0;
+      setQ(Math.max(qMin, q * Math.min(.92, Math.max(.66, Math.sqrt(16 / g.ema)))), now);
+    } else if (q < 1 && g.ema < 17.6 && now - g.changed > g.wait) {
+      g.probe = now;
+      setQ(Math.min(1, q * 1.15), now);
+    }
+  }
+  function resize(entries) {
+    if (lost) return;
+    const r = canvas.getBoundingClientRect();
+    const box = entries?.[0]?.devicePixelContentBoxSize?.[0];
+    const d = devicePixelRatio || 1;
+    const dw = Math.max(1, box ? box.inlineSize : Math.round(r.width * d)), dh = Math.max(1, box ? box.blockSize : Math.round(r.height * d));
+    if (dw === cw && dh === ch && r.width === cssW && r.height === cssH) return;
+    cssW = Math.max(1, r.width);
+    cssH = Math.max(1, r.height);
+    cw = canvas.width = dw;
+    ch = canvas.height = dh;
+    const pw = W1, ph = H1;
+    if (!pw && adaptive) q = Math.max(qMin, Math.min(1, Math.sqrt((opt.budget ?? 8e6) / (cssW * cssH * dens * dens))));
+    fit();
+    if (W1 !== pw || H1 !== ph) opt.onResize?.(W1, H1, ctl);
+    if (!pw) kick();
+    else if (visible && !paused) {
+      if (raf) cancelAnimationFrame(raf);
+      draw(performance.now(), true);
+    }
+  }
+  function draw(now, sync) {
+    raf = 0;
+    if (lost) return;
+    const ms = now - last;
+    const dt = Math.min(.05, Math.max(0, ms / 1000));
+    last = now;
+    if (!sync) govern(ms, now);
+    if (!reduce) time += dt * speed;
+    const idle = (now - m.moved) / 1000;
+    if (opt.autoMouse && !reduce && idle > 2.5) {
+      if (!m.auto) {
+        m.ux = m.rx;
+        m.uy = m.ry;
+        m.auto = true;
+      }
+      const a = time * .55, w = Math.min(1, (idle - 2.5) / 2.2), e = w * w * (3 - 2 * w);
+      const ax = .5 + .32 * Math.sin(a * 1.3) * (opt.autoMouse.x ?? 1), ay = .5 + .26 * Math.sin(a * 2.1 + .6) * (opt.autoMouse.y ?? 1);
+      m.rx = m.ux + (ax - m.ux) * e;
+      m.ry = m.uy + (ay - m.uy) * e;
+    }
+    const k = 1 - Math.exp(-dt * (opt.mouseEase ?? 10)), kv = 1 - Math.exp(-dt * 14);
+    const vx = dt > 0 ? (m.rx - m.px) / dt : 0, vy = dt > 0 ? (m.ry - m.py) / dt : 0;
+    m.vx += (vx - m.vx) * kv;
+    m.vy += (vy - m.vy) * kv;
+    m.lx = m.px;
+    m.ly = m.py;
+    m.px = m.rx;
+    m.py = m.ry;
+    m.x += (m.rx - m.x) * k;
+    m.y += (m.ry - m.y) * k;
+    m.h += ((m.inside || m.auto ? 1 : 0) - m.h) * (1 - Math.exp(-dt * 7));
+    opt.onFrame?.(time, dt, ctl);
+    for (const t of Object.values(textures)) if (t.dynamic || t.dirty) upload(t);
+    passes.forEach((ps) => {
+      if (ps.skip?.(time)) return;
+      let iters = ps.iterations || 1;
+      if (ps.hz) {
+        ps.acc = Math.min(4, (ps.acc ?? 1) + dt * ps.hz * (reduce ? 0 : speed));
+        iters = Math.floor(ps.acc);
+        ps.acc -= iters;
+        if (!iters && frame < 2) iters = 1;
+      }
+      for (let it = 0; it < iters; it++) {
+        const read = ps.feedback ? ps.fbo[ps.cur] : null;
+        const write = ps.feedback ? ps.fbo[1 - ps.cur] : ps.fbo[0];
+        gl.bindFramebuffer(gl.FRAMEBUFFER, write.fb);
+        gl.viewport(0, 0, ps.w, ps.h);
+        gl.useProgram(ps.prog.p);
+        let unit = 0;
+        for (const [name, u] of Object.entries(ps.prog.u)) {
+          if (u.type === gl.SAMPLER_2D) {
+            const ref = ps.inputs?.[name] ?? name;
+            const other = passes.find((p) => p.id === ref);
+            const t = name === 'uPrev' ? (read ? read.tex : blank) : other ? other.out : textures[ref]?.ready ? textures[ref].tex : blank;
+            gl.activeTexture(gl.TEXTURE0 + unit);
+            gl.bindTexture(gl.TEXTURE_2D, t);
+            gl.uniform1i(u.loc, unit++);
+            continue;
+          }
+          switch (name) {
+            case 'uRes': gl.uniform2f(u.loc, ps.w, ps.h); break;
+            case 'uView': gl.uniform2f(u.loc, W, H); break;
+            case 'uPx': gl.uniform1f(u.loc, ps.w / cssW); break;
+            case 'uTime': gl.uniform1f(u.loc, time); break;
+            case 'uDt': gl.uniform1f(u.loc, dt); break;
+            case 'uFrame': gl.uniform1i(u.loc, frame); break;
+            case 'uMouse': gl.uniform2f(u.loc, m.x, m.y); break;
+            case 'uMouseRaw': gl.uniform2f(u.loc, m.rx, m.ry); break;
+            case 'uMouseLast': gl.uniform2f(u.loc, m.lx, m.ly); break;
+            case 'uVel': gl.uniform2f(u.loc, m.vx, m.vy); break;
+            case 'uDown': gl.uniform1f(u.loc, m.down); break;
+            case 'uHover': gl.uniform1f(u.loc, m.h); break;
+            default: {
+              const ref = name.endsWith('Size') && (ps.inputs?.[name.slice(0, -4)] ?? name.slice(0, -4));
+              const t = ref && textures[ref];
+              const p = ref && passes.find((x) => x.id === ref);
+              if (t) gl.uniform2fv(u.loc, t.size || [1, 1]);
+              else if (p) gl.uniform2f(u.loc, p.w || W, p.h || H);
+              else if (ps.uniforms && name in ps.uniforms) setUniform(u, ps.uniforms[name]);
+              else if (name in values) setUniform(u, values[name]);
+            }
+          }
+        }
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (ps.feedback) {
+          ps.cur = 1 - ps.cur;
+          ps.out = ps.fbo[ps.cur].tex;
+        }
+      }
+    });
+    if (!fin.offscreen) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, cw, ch);
+      gl.useProgram(present.p);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, fin.out);
+      gl.uniform1i(present.u.uSrc.loc, 0);
+      gl.uniform2f(present.u.uSrcSize.loc, fin.w, fin.h);
+      gl.uniform1i(present.u.uMode.loc, pixelated ? 2 : fin.w < cw * .98 ? 1 : 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+    frame++;
+    if (embed && frame === 3 && parent !== window) parent.postMessage('mk-ready', '*');
+    if (fade) {
+      if (fade < 0) fade = now;
+      const f = Math.min(1, (now - fade) / 900);
+      canvas.style.opacity = f < 1 ? (1 - (1 - f) ** 3).toFixed(3) : '';
+      if (f >= 1) fade = 0;
+    }
+    if (visible && !paused && !(reduce && !opt.alwaysRun && now - m.moved > 1500 && frame > 2)) raf = requestAnimationFrame((t) => draw(t));
+  }
+  function kick() {
+    if (!raf && visible && !paused && !lost && W) {
+      last = performance.now();
+      g.run = 0;
+      raf = requestAnimationFrame((t) => draw(t));
+    }
+  }
+  const ctl = {
+    gl, canvas, textures, passes, mouse: m, reduce,
+    set(name, v) { values[name] = v; kick(); },
+    get(name) { return values[name]; },
+    tex,
+    time: () => time,
+    setTime(t) { time = t; kick(); },
+    speed(s) { speed = s; },
+    pause() { paused = true; },
+    play() { paused = false; kick(); },
+    quality: () => q,
+    resize: () => resize(),
+    kick,
+  };
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); lost = true; });
+  canvas.addEventListener('webglcontextrestored', () => location.reload());
+  if (fade) canvas.style.opacity = '0';
+  const ro = new ResizeObserver(resize);
+  try { ro.observe(canvas, { box: 'device-pixel-content-box' }); } catch (e) { ro.observe(canvas); }
+  new IntersectionObserver(([e]) => { visible = e.isIntersecting; kick(); }).observe(canvas);
+  resize();
+  if (opt.drop) fileSwap(ctl, opt.drop);
+  return ctl;
+}
+
+function bloom(src, levels = 5, radius = 1) {
+  const down = `uniform sampler2D uSrc;
+uniform vec2 uSrcSize;
+uniform float uFirst;
+vec3 tap(vec2 uv) { vec3 c = texture(uSrc, uv).rgb; return uFirst > .5 ? c / (1. + max(c.r, max(c.g, c.b)) / 24.) : c; }
+void main() {
+  vec2 t = 1. / uSrcSize, uv = vUv;
+  vec3 a = tap(uv + t * vec2(-2, 2)), b = tap(uv + t * vec2(0, 2)), c = tap(uv + t * vec2(2, 2));
+  vec3 d = tap(uv + t * vec2(-2, 0)), e = tap(uv), f = tap(uv + t * vec2(2, 0));
+  vec3 g = tap(uv + t * vec2(-2, -2)), h = tap(uv + t * vec2(0, -2)), i = tap(uv + t * vec2(2, -2));
+  vec3 j = tap(uv + t * vec2(-1, 1)), k = tap(uv + t * vec2(1, 1)), l = tap(uv + t * vec2(-1, -1)), m = tap(uv + t * vec2(1, -1));
+  o = vec4(e * .125 + (a + c + g + i) * .03125 + (b + d + f + h) * .0625 + (j + k + l + m) * .125, 1);
+}`;
+  const up = `uniform sampler2D uSrc;
+uniform sampler2D uAdd;
+uniform vec2 uSrcSize;
+uniform float uRadius;
+void main() {
+  vec2 t = uRadius / uSrcSize;
+  vec3 s = texture(uSrc, vUv + t * vec2(-1, 1)).rgb + texture(uSrc, vUv + t * vec2(1, 1)).rgb + texture(uSrc, vUv + t * vec2(-1, -1)).rgb + texture(uSrc, vUv + t * vec2(1, -1)).rgb;
+  s += 2. * (texture(uSrc, vUv + t * vec2(0, 1)).rgb + texture(uSrc, vUv + t * vec2(0, -1)).rgb + texture(uSrc, vUv + t * vec2(-1, 0)).rgb + texture(uSrc, vUv + t * vec2(1, 0)).rgb);
+  o = vec4((s + 4. * texture(uSrc, vUv).rgb) / 16. + texture(uAdd, vUv).rgb, 1);
+}`;
+  const p = [];
+  for (let i = 1; i <= levels; i++) p.push({ id: `uB${i}`, fs: down, size: 2 ** -i, float: true, inputs: { uSrc: i === 1 ? src : `uB${i - 1}` }, uniforms: { uFirst: i === 1 ? 1 : 0 } });
+  for (let i = levels - 1; i >= 1; i--) p.push({ id: i === 1 ? 'uBloom' : `uU${i}`, fs: up, size: 2 ** -i, float: true, inputs: { uSrc: i === levels - 1 ? `uB${levels}` : `uU${i + 1}`, uAdd: `uB${i}` }, uniforms: { uRadius: radius } });
+  return p;
+}
+
+function paint(w, h, fn, el) {
+  const c = el || document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w));
+  c.height = Math.max(1, Math.round(h));
+  const ctx = c.getContext('2d');
+  fn(ctx, c.width, c.height);
+  return c;
+}
+
+function fitFont(ctx, lines, maxW, maxH, { weight = 800, family = 'system-ui, sans-serif', lh = 1, style = '' } = {}) {
+  lines = [].concat(lines);
+  let s = maxH / (lines.length * lh);
+  ctx.font = `${style} ${weight} ${s}px ${family}`;
+  const w = Math.max(...lines.map((l) => ctx.measureText(l).width));
+  if (w > maxW) s *= maxW / w;
+  ctx.font = `${style} ${weight} ${s}px ${family}`;
+  return s;
+}
+
+function glyphAtlas(chars = ' .:-=+*#%@', cell = 48, font = 'Menlo, ui-monospace, monospace') {
+  return paint(cell * chars.length, cell, (ctx, w, h) => {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${cell * .82}px ${font}`;
+    [...chars].forEach((ch, i) => ctx.fillText(ch, cell * (i + .5), h * .54));
+  });
+}
+
+function fileSwap(ctl, name, onLoad) {
+  const use = (file) => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    if (file.type.startsWith('video/')) {
+      const v = Object.assign(document.createElement('video'), { src: url, muted: true, loop: true, playsInline: true, autoplay: true });
+      v.play().catch(() => {});
+      ctl.tex(name, v, { dynamic: true });
+      onLoad?.(v);
+    } else {
+      const img = new Image();
+      img.onload = () => { ctl.tex(name, img); onLoad?.(img); };
+      img.src = url;
+    }
+  };
+  document.querySelectorAll('input[type=file][data-file]').forEach((i) => i.addEventListener('change', () => use(i.files[0])));
+  addEventListener('dragover', (e) => e.preventDefault());
+  addEventListener('drop', (e) => { e.preventDefault(); use(e.dataTransfer.files[0]); });
+}
+</script>
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const { items, cats } = JSON.parse(document.getElementById('data').textContent);
+  const byFile = Object.fromEntries(items.map((i) => [i.file, i]));
+  const nMotion = items.filter((i) => i.src === 'motion').length, nWebgl = items.length - nMotion;
+  const plural = (k, a) => { const m = k % 10, h = k % 100; return a[m === 1 && h !== 11 ? 0 : m >= 2 && m <= 4 && (h < 12 || h > 14) ? 1 : 2]; };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  const T = {
+    ru: {
+      docTitle: 'sxwrpv — motion kit', skip: 'К содержанию', navScenes: 'Сцены', navIndex: 'Индекс', navEngine: 'Движок', navCharts: 'Графики', navCatalog: 'Каталог',
+      heroKicker: 'Motion kit — 2026',
+      heroLead: `${items.length} ${plural(items.length, ['анимация', 'анимации', 'анимаций'])} и WebGL-сцены, написанные с нуля. Один файл — один эффект, без библиотек и сборки.`,
+      heroCta1: 'Смотреть сцены', heroCta2: 'Открыть каталог',
+      intro: 'Свет, стекло, хром, пружины, прокрутка и графики. Каждый эффект живёт в одном HTML-файле: открываете, смотрите, копируете в свой проект. Всё работает прямо с диска — без сервера, npm и интернета.',
+      s1: `${plural(nMotion, ['анимация', 'анимации', 'анимаций'])} интерфейса`, s2: `WebGL-${plural(nWebgl, ['сцена', 'сцены', 'сцен'])}`, s3: plural(cats.length, ['раздел', 'раздела', 'разделов']), s4: 'зависимостей',
+      scenesTitle: 'Сцены', scenesLead: 'Живые сцены прямо на странице. Наведите курсор — почти все реагируют на мышь.', open: 'Открыть файл',
+      marquee: 'Превью из набора',
+      indexTitle: 'Индекс', indexLead: `Все ${items.length} ${plural(items.length, ['файл', 'файла', 'файлов'])} по разделам. Наведите на название — появится превью.`, indexCatalog: 'Каталог с поиском и описаниями',
+      ixMotion: 'Анимации интерфейса', ixWebgl: 'WebGL-сцены',
+      engineTitle: 'Движок', engineLead: 'Сцены запускает мини-движок shader() на WebGL 2. Он вшит в каждый файл и весит около 20 КБ.',
+      p1t: 'Один файл — один эффект', p1d: 'Скопируйте файл в проект, и он заработает. Никаких npm, сборки и внешних скриптов.',
+      p2t: 'Плавно на 60 и 120 Гц', p2d: 'Движение считается от реального времени кадра, а разрешение подстраивается под видеокарту, чтобы не было рывков.',
+      p3t: 'Свет без ступенек', p3d: 'HDR-рендер, bloom, тональная кривая, смешивание цветов в OKLab и дизеринг убирают полосы на градиентах.',
+      p4t: 'Бережно к людям и батарее', p4d: 'Учитывается prefers-reduced-motion, сцены встают на паузу вне экрана и сами восстанавливаются после сбоя видеокарты.',
+      demoCap: 'Этот шейдер рисует холст выше — поменяйте цвета.',
+      footLead: 'Весь набор — в одной папке. Начните с каталога.', footCta: 'Открыть каталог', footNote: 'Все файлы открываются прямо с диска', toTop: 'Наверх',
+    },
+    en: {
+      docTitle: 'sxwrpv — motion kit', skip: 'Skip to content', navScenes: 'Scenes', navIndex: 'Index', navEngine: 'Engine', navCharts: 'Charts', navCatalog: 'Catalogue',
+      heroKicker: 'Motion kit — 2026',
+      heroLead: `${items.length} animations and WebGL scenes written from scratch. One file, one effect — no libraries, no build step.`,
+      heroCta1: 'See the scenes', heroCta2: 'Open the catalogue',
+      intro: 'Light, glass, chrome, springs, scroll and charts. Every effect lives in a single HTML file: open it, look, copy it into your project. Everything runs straight from disk — no server, no npm, no internet.',
+      s1: 'interface animations', s2: 'WebGL scenes', s3: 'sections', s4: 'dependencies',
+      scenesTitle: 'Scenes', scenesLead: 'Live scenes right on the page. Move your cursor over them — almost all of them react to the mouse.', open: 'Open file',
+      marquee: 'Previews from the kit',
+      indexTitle: 'Index', indexLead: `All ${items.length} files by section. Hover a title to see a preview.`, indexCatalog: 'Catalogue with search and descriptions',
+      ixMotion: 'Interface animations', ixWebgl: 'WebGL scenes',
+      engineTitle: 'Engine', engineLead: 'The scenes run on shader(), a WebGL 2 mini engine. It is inlined in every file and weighs about 20 KB.',
+      p1t: 'One file, one effect', p1d: 'Copy the file into a project and it works. No npm, no build, no external scripts.',
+      p2t: 'Smooth at 60 and 120 Hz', p2d: 'Motion follows real frame time, and resolution adapts to the GPU so nothing stutters.',
+      p3t: 'Light without banding', p3d: 'HDR rendering, bloom, a tone curve, OKLab colour mixing and dithering keep gradients clean.',
+      p4t: 'Kind to people and batteries', p4d: 'prefers-reduced-motion is respected, scenes pause off screen and recover on their own after a GPU reset.',
+      demoCap: 'This shader draws the canvas above — change the colours.',
+      footLead: 'The whole kit is one folder. Start with the catalogue.', footCta: 'Open the catalogue', footNote: 'Every file opens straight from disk', toTop: 'Back to top',
+    },
+  };
+  let lang = 'ru';
+  try { lang = localStorage.getItem('mk-lang') === 'en' ? 'en' : 'ru'; } catch (e) {}
+  const tt = (i) => (lang === 'en' ? i.title_en : i.title);
+  const dd = (i) => (lang === 'en' ? i.desc_en : i.desc);
+  const catName = (k) => { const c = cats.find((x) => x[0] === k); return c ? (lang === 'en' ? c[2] : c[1]) : k; };
+
+  function spring(k, c, m) {
+    const w0 = Math.sqrt(k / m), z = c / (2 * Math.sqrt(k * m)), wd = w0 * Math.sqrt(Math.max(1e-9, 1 - z * z));
+    const x = (t) => 1 - Math.exp(-z * w0 * t) * (Math.cos(wd * t) + (z * w0 / wd) * Math.sin(wd * t));
+    let T1 = .05;
+    while (T1 < 10 && (Math.abs(1 - x(T1)) > .001 || Math.abs(1 - x(T1 - .05)) > .001)) T1 += .01;
+    const n = Math.min(80, Math.max(24, Math.round(T1 * 30)));
+    return `linear(${Array.from({ length: n + 1 }, (_, i) => (i === n ? 1 : +x((T1 * i) / n).toFixed(4))).join(', ')})`;
+  }
+  document.documentElement.style.setProperty('--spring', spring(90, 15, 1));
+
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add('in');
+    io.unobserve(e.target);
+    e.target.dispatchEvent(new Event('reveal'));
+  }), { rootMargin: '0px 0px -10% 0px' });
+
+  function split(el, text) {
+    el.innerHTML = text.split(' ').map((w, i) => `<span class="wm"><span class="wi" style="--i:${i}">${esc(w)}</span></span>`).join(' ');
+  }
+  const words = $('[data-words]');
+  function wordsSet(text) {
+    words.innerHTML = text.split(' ').map((w) => `<span class="w">${esc(w)}</span>`).join(' ');
+    wordsUpdate();
+  }
+  function wordsUpdate() {
+    if (reduce) return;
+    const r = words.getBoundingClientRect(), vh = innerHeight;
+    const p = clamp((vh * .88 - r.top) / (r.height + vh * .3), 0, 1);
+    const ws = words.children, n = ws.length;
+    for (let i = 0; i < n; i++) ws[i].style.opacity = (.14 + .86 * clamp(p * (n + 5) - i, 0, 5) / 5).toFixed(3);
+  }
+
+  function rollBuild(el) {
+    const to = el.dataset.roll;
+    el.setAttribute('aria-label', to);
+    el.innerHTML = [...to].map(() => `<span class="dg" aria-hidden="true"><span>${'0123456789'.split('').map((d) => `<i>${d}</i>`).join('')}</span></span>`).join('');
+    $$('.dg > span', el).forEach((s, k) => { s.style.transform = `translateY(${-((+to[k] + 6) % 10) * 10}%)`; });
+  }
+  function rollRun(el, base) {
+    const to = el.dataset.roll;
+    $$('.dg > span', el).forEach((s, k) => {
+      s.style.transitionDelay = `${base + k * 110}ms`;
+      s.style.transform = `translateY(${-to[k] * 10}%)`;
+    });
+  }
+  const stats = $('[data-stats]');
+  $$('[data-roll]', stats).forEach(rollBuild);
+  if (reduce) $$('[data-roll]', stats).forEach((el) => rollRun(el, 0));
+  else {
+    stats.addEventListener('reveal', () => $$('[data-roll]', stats).forEach((el, i) => rollRun(el, i * 120)));
+    io.observe(stats);
+  }
+
+  const FEATURED = [
+    ['webgl/3d/laptop.html', 2, true],
+    ['webgl/3d/glass-hash.html', 6],
+    ['webgl/mouse/koi-pond.html', 6],
+    ['webgl/3d/asteroid.html', 4],
+    ['webgl/3d/balloon-dog.html', 8],
+    ['webgl/3d/slab-ring.html', 7.5, true],
+    ['webgl/light/neon-tubes.html', 6],
+    ['webgl/text/liquid-chrome.html', 6],
+  ];
+  const featured = $('#featured');
+  featured.innerHTML = FEATURED.map(([f, t, wide], k) => {
+    const i = byFile[f];
+    return `<article class="card${wide ? ' card--wide' : ''}" data-reveal data-file="${esc(f)}">
+      <div class="media" data-src="${esc(f)}?embed&amp;t=${t}"><img src="${esc(i.thumb)}" alt="" loading="lazy" decoding="async"></div>
+      <div class="cap"><span class="n">${String(k + 1).padStart(2, '0')}</span><h3></h3><a class="open" href="${esc(f)}" target="_blank" rel="noopener"></a><p></p><span class="label"></span></div>
+    </article>`;
+  }).join('');
+  function featuredText() {
+    $$('.card', featured).forEach((c) => {
+      const i = byFile[c.dataset.file];
+      $('h3', c).textContent = tt(i);
+      $('p', c).textContent = dd(i);
+      $('.label', c).textContent = catName(i.cat);
+      $('.open', c).textContent = `${T[lang].open} ↗`;
+      $('.media', c).dataset.title = tt(i);
+    });
+  }
+  const ready = new WeakMap();
+  function load(m) {
+    if ($('iframe', m)) return;
+    const f = document.createElement('iframe');
+    f.title = m.dataset.title || '';
+    f.tabIndex = -1;
+    f.setAttribute('allow', 'autoplay');
+    f.addEventListener('load', () => { if (f.src.startsWith('about:')) return; ready.set(f, setTimeout(() => m.classList.add('live'), 1600)); }, { once: true });
+    f.src = m.dataset.src;
+    m.append(f);
+  }
+  function unload(m) {
+    const f = $('iframe', m);
+    if (!f) return;
+    clearTimeout(ready.get(f));
+    m.classList.remove('live');
+    f.src = 'about:blank';
+    f.remove();
+  }
+  addEventListener('message', (e) => {
+    if (e.data !== 'mk-ready') return;
+    const f = $$('.media iframe').find((x) => x.contentWindow === e.source);
+    if (f) { clearTimeout(ready.get(f)); f.parentElement.classList.add('live'); }
+  });
+  const nearIO = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && load(e.target)), { rootMargin: '20% 0px' });
+  const farIO = new IntersectionObserver((es) => es.forEach((e) => !e.isIntersecting && unload(e.target)), { rootMargin: '60% 0px' });
+  $$('.media', featured).forEach((m) => { nearIO.observe(m); farIO.observe(m); });
+
+  const order = items.map((x, k) => [x, (k * 0.6180339887) % 1]).sort((a, b) => a[1] - b[1]).map((x) => x[0]);
+  const pick = order.filter((x, k) => k % 3 === 0);
+  const rows = $$('[data-row]').map((row, r) => {
+    const list = pick.filter((x, k) => k % 2 === r);
+    const html = list.map((i) => `<a class="tile" href="${esc(i.file)}" target="_blank" rel="noopener" data-file="${esc(i.file)}"><img data-src="${esc(i.thumb)}" alt="" decoding="async"><span></span></a>`).join('');
+    row.innerHTML = html + html.replace(/<a class="tile"/g, '<a class="tile" tabindex="-1" aria-hidden="true"');
+    return { el: row, n: list.length, x: 0, period: 0, start: r ? .5 : 0, dir: r ? 1 : -1, v: 1, hover: 0 };
+  });
+  function marqueeText() {
+    $$('.tile').forEach((a) => { const i = byFile[a.dataset.file]; a.querySelector('span').textContent = tt(i); a.setAttribute('aria-label', tt(i)); });
+  }
+  rows.forEach((r) => {
+    r.el.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') r.hover = 1; });
+    r.el.addEventListener('pointerleave', () => { r.hover = 0; });
+    r.el.addEventListener('focusin', () => { r.hover = 1; });
+    r.el.addEventListener('focusout', () => { r.hover = 0; });
+  });
+  let mqOn = false, mqRaf = 0, mqLast = 0, scrollV = 0, lastScroll = scrollY, lastScrollT = performance.now();
+  function marquee(now) {
+    const dt = Math.min(.05, (now - mqLast) / 1000);
+    mqLast = now;
+    scrollV *= Math.exp(-dt * 3.5);
+    rows.forEach((r) => {
+      if (!r.period) {
+        r.period = r.el.children[r.n].offsetLeft - r.el.children[0].offsetLeft;
+        if (r.start) { r.x = -r.period * r.start; r.start = 0; }
+      }
+      const half = r.period;
+      if (!half) return;
+      const target = (1 - r.hover) * (1 + clamp(Math.abs(scrollV) / 900, 0, 4));
+      r.v += (target - r.v) * (1 - Math.exp(-dt * 5));
+      r.x += r.dir * r.v * 34 * dt;
+      r.x = ((r.x % half) - half) % half;
+      r.el.style.transform = `translate3d(${r.x.toFixed(2)}px, 0, 0)`;
+    });
+    mqRaf = mqOn ? requestAnimationFrame(marquee) : 0;
+  }
+  new IntersectionObserver(([e], o) => {
+    if (!e.isIntersecting) return;
+    $$('[data-marquee] img[data-src]').forEach((im) => { im.src = im.dataset.src; im.removeAttribute('data-src'); });
+    o.disconnect();
+  }, { rootMargin: '120% 0px' }).observe($('[data-marquee]'));
+  if (!reduce) new IntersectionObserver(([e]) => {
+    mqOn = e.isIntersecting;
+    if (mqOn && !mqRaf) { mqLast = performance.now(); mqRaf = requestAnimationFrame(marquee); }
+  }).observe($('[data-marquee]'));
+
+  function indexRender() {
+    ['motion', 'webgl'].forEach((src) => {
+      const n = src === 'motion' ? nMotion : nWebgl;
+      $(`[data-ix-head="${src}"]`).textContent = `${src === 'motion' ? T[lang].ixMotion : T[lang].ixWebgl} · ${n}`;
+      $(`[data-ix="${src}"]`).innerHTML = cats.filter((c) => items.some((i) => i.cat === c[0] && i.src === src)).map(([k]) => {
+        const list = items.filter((i) => i.cat === k);
+        return `<div class="grp"><a class="label" href="catalog.html#${esc(k)}">${esc(catName(k))}<span>${list.length}</span></a><ul>${list.map((i) => `<li><a href="${esc(i.file)}" target="_blank" rel="noopener" data-thumb="${esc(i.thumb)}">${esc(tt(i))}</a></li>`).join('')}</ul></div>`;
+      }).join('');
+    });
+  }
+
+  const peek = $('.peek'), pimg = $('img', peek);
+  const pk = { x: 0, y: 0, tx: 0, ty: 0, vis: 0, tv: 0, rot: 0, raf: 0, last: 0 };
+  function peekStep(now) {
+    const dt = Math.min(.05, (now - pk.last) / 1000 || .016);
+    pk.last = now;
+    const ox = pk.x;
+    pk.x += (pk.tx - pk.x) * (1 - Math.exp(-dt * 13));
+    pk.y += (pk.ty - pk.y) * (1 - Math.exp(-dt * 13));
+    const vx = (pk.x - ox) / Math.max(dt, 1e-3);
+    pk.rot += (clamp(vx * .011, -10, 10) - pk.rot) * (1 - Math.exp(-dt * 9));
+    pk.vis += (pk.tv - pk.vis) * (1 - Math.exp(-dt * 15));
+    const w = peek.offsetWidth, h = peek.offsetHeight;
+    const left = pk.x + 28 + w > innerWidth - 12 ? pk.x - 28 - w : pk.x + 28;
+    const top = clamp(pk.y - h / 2, 12, innerHeight - h - 12);
+    peek.style.opacity = pk.vis.toFixed(3);
+    peek.style.transform = `translate3d(${left.toFixed(1)}px, ${top.toFixed(1)}px, 0) rotate(${(reduce ? 0 : pk.rot).toFixed(2)}deg) scale(${(.86 + .14 * pk.vis).toFixed(3)})`;
+    const moving = Math.abs(pk.tv - pk.vis) > .002 || Math.abs(pk.tx - pk.x) > .3 || Math.abs(pk.ty - pk.y) > .3 || Math.abs(pk.rot) > .05;
+    pk.raf = moving ? requestAnimationFrame(peekStep) : 0;
+  }
+  const peekKick = () => { if (!pk.raf) { pk.last = performance.now(); pk.raf = requestAnimationFrame(peekStep); } };
+  if (fine) {
+    document.addEventListener('pointerover', (e) => {
+      const a = e.target.closest?.('[data-thumb]');
+      if (!a || e.pointerType === 'touch') return;
+      if (pimg.getAttribute('src') !== a.dataset.thumb) pimg.src = a.dataset.thumb;
+      if (pk.vis < .03) { pk.x = pk.tx = e.clientX; pk.y = pk.ty = e.clientY; }
+      pk.tv = 1;
+      peekKick();
+    });
+    document.addEventListener('pointerout', (e) => {
+      const a = e.target.closest?.('[data-thumb]');
+      if (a && !(e.relatedTarget && a.contains(e.relatedTarget))) { pk.tv = 0; peekKick(); }
+    });
+    addEventListener('pointermove', (e) => { pk.tx = e.clientX; pk.ty = e.clientY; if (pk.tv || pk.vis > .01) peekKick(); }, { passive: true });
+    addEventListener('scroll', () => { if (pk.tv) { pk.tv = 0; peekKick(); } }, { passive: true });
+  }
+
+  function applyLang() {
+    const L = T[lang];
+    document.documentElement.lang = lang;
+    document.title = L.docTitle;
+    $$('[data-t]').forEach((el) => {
+      const v = L[el.dataset.t];
+      if (el.classList.contains('split')) split(el, v);
+      else el.textContent = v;
+    });
+    wordsSet(L.intro);
+    $$('[data-l]').forEach((s) => s.setAttribute('aria-current', String(s.dataset.l === lang)));
+    featuredText();
+    marqueeText();
+    indexRender();
+  }
+  $('[data-lang]').addEventListener('click', () => {
+    lang = lang === 'ru' ? 'en' : 'ru';
+    try { localStorage.setItem('mk-lang', lang); } catch (e) {}
+    applyLang();
+    if (heroCtl && word.width) { paintWord(word.width, word.height); heroCtl.tex('uText', word, { mips: true }); }
+  });
+  applyLang();
+  $$('.split, [data-reveal]').forEach((el) => io.observe(el));
+
+  const nav = $('[data-nav]'), hero = $('.hero'), heroUi = $('.hero-ui'), foot = $('[data-foot]'), main = $('main');
+  let heroP = 0, lastY = scrollY, ticking = false;
+  function onScroll() {
+    ticking = false;
+    const y = scrollY, now = performance.now();
+    const dy = y - lastScroll;
+    scrollV = scrollV * .6 + (dy / Math.max(1, now - lastScrollT)) * 1000 * .4;
+    lastScroll = y;
+    lastScrollT = now;
+    heroP = clamp(y / hero.offsetHeight, 0, 1);
+    if (!reduce) {
+      heroUi.style.opacity = clamp(1 - heroP * 1.8, 0, 1).toFixed(3);
+      heroUi.style.transform = `translate3d(0, ${(-heroP * 70).toFixed(1)}px, 0)`;
+      wordsUpdate();
+      const r = main.getBoundingClientRect(), fh = foot.parentElement.offsetHeight;
+      const p = clamp((innerHeight - r.bottom) / fh, 0, 1);
+      foot.style.transform = `translate3d(0, ${((1 - p) * 22).toFixed(2)}%, 0)`;
+      foot.style.opacity = (.2 + .8 * p).toFixed(3);
+    }
+    if (Math.abs(y - lastY) > 6) {
+      nav.classList.toggle('is-hidden', y > lastY && y > 140 && !nav.contains(document.activeElement));
+      lastY = y;
+    }
+  }
+  addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
+  addEventListener('resize', () => { fitFoot(); rows.forEach((r) => { r.period = 0; }); onScroll(); });
+
+  const footWord = $('.foot-word'), footSpan = $('span', footWord);
+  function fitFoot() {
+    footWord.style.fontSize = '100px';
+    const w = footSpan.getBoundingClientRect().width;
+    if (w) footWord.style.fontSize = `${(100 * footWord.clientWidth / w).toFixed(2)}px`;
+  }
+  fitFoot();
+  document.fonts?.ready.then(fitFoot);
+  onScroll();
+
+  const word = document.createElement('canvas');
+  let lift = 0, gem = .39;
+  function paintWord(W, H) {
+    const c = word, ctx = c.getContext('2d');
+    c.width = W;
+    c.height = H;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const tall = W / H < .82, lines = tall ? ['sxw', 'rpv'] : ['sxwrpv'];
+    const k = W / Math.max(1, hero.clientWidth), top = 72 * k, bottom = Math.min(H, (heroUi.offsetTop - 16) * k);
+    const fam = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif';
+    const set = (s) => { ctx.font = `700 ${s}px ${fam}`; if ('letterSpacing' in ctx) ctx.letterSpacing = `${(-.045 * s).toFixed(2)}px`; };
+    set(100);
+    const mw = Math.max(...lines.map((l) => ctx.measureText(l).width));
+    const xr = (ctx.measureText('x').actualBoundingBoxAscent || 52) / 100, dr = (ctx.measureText('p').actualBoundingBoxDescent || 21) / 100, lr = .9;
+    let s = 100 * (W * (tall ? .86 : .9)) / mw;
+    s = Math.min(s, Math.max(40 * k, (bottom - top) * .94) / (tall ? lr + xr + dr : xr + dr));
+    set(s);
+    const xh = xr * s, lh = lr * s, half = tall ? (lh + xh) / 2 : xh / 2;
+    const cy = Math.max(top + half, Math.min(H / 2 * (1 - (tall ? .2 : .03)), bottom - half - dr * s));
+    lift = 1 - 2 * cy / H;
+    gem = Math.min(.42, (tall ? .86 : .73) * xh / (H / 2));
+    const y0 = cy + xh / 2 - ((lines.length - 1) * lh) / 2;
+    lines.forEach((l, i) => ctx.fillText(l, W / 2, y0 + i * lh));
+  }
+  const heroCtl = shader({
+    canvas: '#hero-gl',
+    budget: 5.5e6,
+    mouseEase: 3.2,
+    uniforms: { uScroll: () => heroP, uLift: () => lift, uGem: () => gem },
+    passes: [{ id: 'uScene', fs: 'hero-scene', float: true }, ...bloom('uScene', 5, 1.2), { fs: 'hero-main' }],
+    onResize: (W, H, c) => { paintWord(W, H); c.tex('uText', word, { mips: true }); },
+  });
+  if (!heroCtl) hero.classList.add('no-gl');
+  requestAnimationFrame(() => setTimeout(() => hero.classList.add('ready'), heroCtl ? 350 : 0));
+
+  const demoCtl = shader({ canvas: '#demo-gl', fs: 'demo-fs', budget: 1.6e6, uniforms: { uA: '#ff5a36', uB: '#2b3dff', uC: '#f3e9dc' } });
+  $$('[data-u]').forEach((inp) => inp.addEventListener('input', () => {
+    demoCtl?.set(inp.dataset.u, inp.value);
+    const v = $(`[data-hex="${inp.dataset.u}"]`);
+    if (v) v.textContent = `'${inp.value}'`;
+  }));
+})();
+</script>
+</body>
+</html>

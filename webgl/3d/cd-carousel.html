@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>CD carousel</title>
+<style id="page">
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body { overflow: hidden; background: #000; color: #fff; font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+canvas[data-gl] { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.dock { position: fixed; left: 16px; bottom: 16px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; }
+.dock button, .dock label { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, .28); border-radius: 999px; background: rgba(10, 10, 12, .5); color: #fff; font: 500 13px/1 system-ui, sans-serif; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.dock input[type=file] { display: none; }
+.dock input[type=color] { width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
+.gl-fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: #aaa; }
+.embed .dock, .embed .hint { display: none !important; }
+.embed canvas[data-gl] { touch-action: pan-y; }
+body { background: #050505; }
+.stage { position: fixed; inset: 0; perspective: 1000px; overflow: hidden; }
+.ring { position: absolute; left: 50%; top: 46%; transform-style: preserve-3d; }
+.cd { position: absolute; width: 30vmin; height: 30vmin; margin: -15vmin 0 0 -15vmin; transform-style: preserve-3d; will-change: transform, opacity, filter; }
+.cd > div { position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; -webkit-mask: radial-gradient(circle, transparent 7%, #000 7.4%); mask: radial-gradient(circle, transparent 7%, #000 7.4%); }
+.cd .front { background: radial-gradient(circle, transparent 7.4%, rgba(255, 255, 255, .45) 7.6% 8.2%, rgba(225, 232, 240, .28) 8.4% 13.6%, rgba(255, 255, 255, .55) 13.8% 14.4%, transparent 14.6%), var(--art); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); }
+.cd .front::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(calc(var(--a, 0) * 1deg + 100deg), transparent 28%, rgba(255, 255, 255, .26) 47%, rgba(255, 255, 255, .05) 56%, transparent 70%); }
+.cd .back { transform: rotateY(180deg); background: radial-gradient(circle, transparent 7.4%, rgba(255, 255, 255, .6) 7.6% 8.2%, rgba(200, 210, 222, .5) 8.4% 13.6%, rgba(255, 255, 255, .8) 13.8% 14.4%, rgba(140, 150, 160, .5) 14.6% 15.2%, transparent 15.4%), repeating-radial-gradient(circle, rgba(255, 255, 255, .07) 0 .5%, rgba(0, 0, 0, .06) .5% 1%), conic-gradient(from calc(var(--a, 0) * -1.3deg), #dfe4ea, #f6f7f9 7%, #ff9fd8 11%, #ffe08a 14%, #8dffc1 17%, #7fd8ff 20%, #c7a6ff 23%, #eef1f4 28%, #c9ced6 40%, #f2f4f6 50%, #ff9fd8 61%, #ffe08a 64%, #8dffc1 67%, #7fd8ff 70%, #c7a6ff 73%, #eef1f4 78%, #c9ced6 90%, #dfe4ea); }
+.cd .back::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(calc(var(--a, 0) * -1deg + 60deg), transparent 30%, rgba(255, 255, 255, .55) 50%, transparent 70%); mix-blend-mode: soft-light; }
+.bar { position: fixed; left: 50%; bottom: 7vh; width: min(420px, 70vw); translate: -50% 0; }
+.bar input { width: 100%; accent-color: #fff; }
+.label { margin-top: 10px; text-align: center; font: 500 12px/1 Menlo, ui-monospace, monospace; letter-spacing: .12em; color: rgba(255, 255, 255, .6); text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="stage"><div class="ring" data-ring></div></div>
+<div class="bar"><input type="range" min="0" max="1000" value="0" aria-label="Gallery position" data-pos><p class="label" data-label></p></div>
+<script>
+const arts = [
+  ['Citrus', 'radial-gradient(circle at 50% 50%, #ffe14d 0 30%, #f5c400 30% 34%, #fff6b0 34% 37%, #f5c400 37% 100%), #f5c400'],
+  ['Bloom', 'radial-gradient(circle at 30% 30%, #ff5fa2 0 18%, transparent 19%), radial-gradient(circle at 70% 60%, #3ddc84 0 22%, transparent 23%), radial-gradient(circle at 40% 75%, #2a9df4 0 15%, transparent 16%), #f6d7e8'],
+  ['Night drive', 'linear-gradient(160deg, #0b1a4a, #3b1d6e 50%, #ff6a3d 95%)'],
+  ['Grid', 'repeating-linear-gradient(0deg, #111 0 6%, #e8e8e8 6% 12%), #111'],
+  ['Mint', 'conic-gradient(from 45deg, #4fe0b5, #1b6b5a, #4fe0b5, #c6ffef, #4fe0b5)'],
+  ['Ember', 'radial-gradient(circle at 50% 65%, #fff1c2 0 10%, #ff9a3d 25%, #c2241b 55%, #300 80%)'],
+  ['Pool', 'repeating-radial-gradient(circle at 50% 50%, #0c7cff 0 4%, #61b3ff 4% 8%)'],
+  ['Mono', 'linear-gradient(90deg, #fafafa 0 50%, #0a0a0a 50%)'],
+];
+const ring = document.querySelector('[data-ring]');
+const cds = arts.map(([name, art]) => {
+  const el = document.createElement('div');
+  el.className = 'cd';
+  el.innerHTML = '<div class="front"></div><div class="back"></div>';
+  el.firstChild.style.setProperty('--art', art);
+  ring.append(el);
+  return { el, name };
+});
+const pos = document.querySelector('[data-pos]');
+const label = document.querySelector('[data-label]');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let T = +(new URLSearchParams(location.search).get('t') ?? 0), p = T * .32 % cds.length, dragging = false;
+pos.addEventListener('input', () => { p = pos.value / 1000 * cds.length; dragging = true; });
+pos.addEventListener('change', () => { dragging = false; });
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, Math.max(0, (now - last) / 1000));
+  last = now;
+  if (!reduce) T += dt;
+  if (!dragging && !reduce) p = (p + dt * .32) % cds.length;
+  pos.value = Math.round(p / cds.length * 1000);
+  const R = Math.min(innerWidth, innerHeight) * .62;
+  cds.forEach((c, i) => {
+    let k = i - p;
+    k = ((k + cds.length / 2) % cds.length + cds.length) % cds.length - cds.length / 2;
+    const a = k * .62;
+    const x = Math.sin(a) * R * 1.35, z = (Math.cos(a) - 1) * R * 1.1;
+    const spin = k * 140 + T * 20;
+    c.el.style.transform = `translate3d(${x.toFixed(2)}px, ${(Math.sin(k * 1.3) * 18).toFixed(2)}px, ${z.toFixed(2)}px) rotateY(${spin.toFixed(2)}deg) rotateZ(${(k * 8).toFixed(2)}deg)`;
+    c.el.style.setProperty('--a', (spin % 360).toFixed(1));
+    c.el.style.opacity = Math.max(0, 1 - Math.abs(k) / 2.6).toFixed(3);
+    c.el.style.filter = `blur(${Math.min(8, Math.abs(k) * 2.2).toFixed(2)}px) brightness(${(1 - Math.min(.6, Math.abs(k) * .18)).toFixed(3)})`;
+  });
+  const cur = ((Math.round(p) % cds.length) + cds.length) % cds.length;
+  const text = `${String(cur + 1).padStart(2, '0')} / ${cds[cur].name}`;
+  if (label.textContent !== text) label.textContent = text;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Modals: dialog, shared layout, stepped</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #1b1b1f; --line: #2c2c31; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 30px; padding: 30px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.row { display: flex; gap: 10px; }
+.btn { padding: 12px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); font: 600 15px/1 system-ui, sans-serif; cursor: pointer; }
+.grid { display: grid; grid-template-columns: repeat(3, 150px); gap: 12px; }
+.tile { aspect-ratio: 1; border: 0; border-radius: 18px; cursor: pointer; display: grid; place-items: end start; padding: 12px; color: #fff; font: 800 18px/1 system-ui, sans-serif; }
+</style>
+<style id="effect">
+.dlg { width: min(440px, 92vw); padding: 24px; border: 1px solid var(--line); border-radius: 20px; background: var(--panel); color: var(--text); box-shadow: 0 30px 80px rgba(0, 0, 0, .6); }
+.dlg::backdrop { background: rgba(0, 0, 0, .55); }
+.dlg[open] { animation: dlg-in .45s cubic-bezier(.2, 1.25, .3, 1); }
+.dlg[open]::backdrop { animation: dlg-fade .3s; }
+.dlg.is-closing { animation: dlg-out .2s ease-in forwards; }
+.dlg.is-closing::backdrop { animation: dlg-fade .2s reverse forwards; }
+@keyframes dlg-in { from { opacity: 0; transform: translateY(24px) scale(.94); } }
+@keyframes dlg-out { to { opacity: 0; transform: translateY(10px) scale(.97); } }
+@keyframes dlg-fade { from { opacity: 0; } }
+.dlg h2 { font-size: 21px; margin-bottom: 8px; }
+.dlg p { color: var(--muted); margin-bottom: 18px; }
+.dlg__actions { display: flex; gap: 8px; justify-content: flex-end; }
+.dlg__actions button { padding: 10px 16px; border: 0; border-radius: 10px; background: var(--line); color: var(--text); font: 600 15px/1 system-ui, sans-serif; cursor: pointer; }
+.dlg__actions button.primary { background: var(--accent); color: #111; }
+.expand { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(0, 0, 0, 0); transition: background-color .35s; }
+.expand.is-on { background: rgba(0, 0, 0, .6); }
+.expand__card { width: min(560px, 92vw); border-radius: 24px; overflow: hidden; background: var(--panel); }
+.expand__hero { height: 260px; display: grid; place-items: end start; padding: 18px; color: #fff; font: 800 30px/1 system-ui, sans-serif; }
+.expand__text { padding: 20px; color: var(--muted); opacity: 0; transition: opacity .3s .25s; }
+.expand.is-on .expand__text { opacity: 1; }
+.steps { position: relative; width: min(380px, 92vw); padding: 0; border: 1px solid var(--line); border-radius: 24px; background: var(--panel); color: var(--text); overflow: hidden; }
+.steps::backdrop { background: rgba(0, 0, 0, .55); }
+.steps[open] { animation: dlg-in .45s cubic-bezier(.2, 1.25, .3, 1); }
+.steps__frame { transition: height .45s cubic-bezier(.2, 1, .3, 1); overflow: hidden; }
+.steps__view { padding: 24px; display: grid; gap: 12px; }
+.steps__view.is-in { animation: step-in .4s cubic-bezier(.2, 1, .3, 1); }
+@keyframes step-in { from { opacity: 0; transform: translateX(calc(var(--dir) * 24px)); filter: blur(2px); } }
+.steps__view h2 { font-size: 20px; }
+.steps__view p { color: var(--muted); }
+.steps__view button { padding: 12px; border: 0; border-radius: 12px; background: var(--line); color: var(--text); font: 600 15px/1 system-ui, sans-serif; cursor: pointer; text-align: left; }
+.steps__view button.primary { background: var(--accent); color: #111; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .dlg[open], .dlg.is-closing, .steps[open], .steps__view.is-in { animation: none; } .steps__frame { transition: none; } }
+</style>
+</head>
+<body>
+<div class="row"><button class="btn" type="button" data-open-basic>Basic dialog</button><button class="btn" type="button" data-open-steps>Stepped dialog</button></div>
+<div class="grid" data-grid></div>
+<dialog class="dlg" data-basic aria-labelledby="dlg-title">
+  <h2 id="dlg-title">Save this date?</h2>
+  <p>Friday, 9:00. We'll send a gentle reminder the evening before.</p>
+  <div class="dlg__actions"><button type="button" data-close>Cancel</button><button type="button" class="primary" data-close>Book</button></div>
+</dialog>
+<dialog class="steps" data-steps aria-label="Quote request"><div class="steps__frame" data-frame></div></dialog>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const closeDialog = (d) => { d.classList.add('is-closing'); setTimeout(() => { d.classList.remove('is-closing'); d.close(); }, reduce ? 0 : 200); };
+const basic = document.querySelector('[data-basic]');
+document.querySelector('[data-open-basic]').addEventListener('click', () => basic.showModal());
+basic.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => closeDialog(basic)));
+basic.addEventListener('cancel', (e) => { e.preventDefault(); closeDialog(basic); });
+const TILES = [['Ember', '#ff9a5a', '#8a2c4a'], ['Lagoon', '#7ad0ff', '#2a3c8f'], ['Meadow', '#c9f27a', '#2f6b3a'], ['Dusk', '#e3a8ff', '#4b2a8f'], ['Saffron', '#ffe27a', '#8f5a1a'], ['Mint', '#7affd8', '#1a6b5a']];
+const grid = document.querySelector('[data-grid]');
+TILES.forEach(([name, a, b]) => {
+  const t = document.createElement('button');
+  t.type = 'button'; t.className = 'tile'; t.textContent = name;
+  t.style.background = `linear-gradient(140deg, ${a}, ${b})`;
+  t.addEventListener('click', () => expand(t, name, t.style.background));
+  grid.append(t);
+});
+async function expand(tile, name, bg) {
+  const layer = document.createElement('div');
+  layer.className = 'expand';
+  layer.setAttribute('role', 'dialog');
+  layer.setAttribute('aria-modal', 'true');
+  layer.setAttribute('aria-label', name);
+  layer.innerHTML = `<div class="expand__card"><div class="expand__hero" style="background:${bg}">${name}</div><div class="expand__text">Shared layout: the tile grows into this card. Click outside or press Esc to close; it shrinks back into the grid.</div></div>`;
+  document.body.append(layer);
+  const card = layer.firstElementChild;
+  const from = tile.getBoundingClientRect(), to = card.getBoundingClientRect();
+  const kf = [{ transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`, borderRadius: '40px' }, { transform: 'none', borderRadius: '24px' }];
+  card.style.transformOrigin = '0 0';
+  tile.style.visibility = 'hidden';
+  if (!reduce) card.animate(kf, { duration: 520, easing: 'cubic-bezier(.2, 1, .3, 1)' });
+  requestAnimationFrame(() => layer.classList.add('is-on'));
+  const close = async () => {
+    removeEventListener('keydown', esc);
+    layer.classList.remove('is-on');
+    const now = tile.getBoundingClientRect(), cur = card.getBoundingClientRect();
+    if (!reduce) await card.animate([{ transform: 'none' }, { transform: `translate(${now.left - cur.left}px, ${now.top - cur.top}px) scale(${now.width / cur.width}, ${now.height / cur.height})`, borderRadius: '40px' }], { duration: 420, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'forwards' }).finished;
+    tile.style.visibility = '';
+    layer.remove();
+    tile.focus();
+  };
+  const esc = (e) => { if (e.key === 'Escape') close(); };
+  addEventListener('keydown', esc);
+  layer.addEventListener('click', (e) => { if (e.target === layer) close(); });
+}
+const STEPS = [
+  { h: 'What are we planning?', p: 'Pick one to continue.', opts: ['A picnic', 'A road trip', 'A quiet evening'] },
+  { h: 'Who is coming?', p: 'A rough idea is enough. This step is taller, so the dialog grows smoothly.', opts: ['Just me', 'Two of us', 'The whole gang', 'Not sure yet'] },
+  { h: 'All set', p: "We'll pack the snacks. You bring the good mood.", done: true },
+];
+const steps = document.querySelector('[data-steps]');
+const frame = steps.querySelector('[data-frame]');
+let step = 0;
+function show(i, dir = 1) {
+  const from = frame.offsetHeight;
+  const s = STEPS[i];
+  frame.innerHTML = `<div class="steps__view is-in" style="--dir:${dir}"><h2>${s.h}</h2><p>${s.p}</p>${s.done ? '<button type="button" class="primary" data-finish>Close</button>' : s.opts.map((o) => `<button type="button" data-next>${o}</button>`).join('')}${i > 0 && !s.done ? '<button type="button" data-back>← Back</button>' : ''}</div>`;
+  const to = frame.firstElementChild.offsetHeight;
+  if (from && !reduce) { frame.style.height = `${from}px`; void frame.offsetHeight; frame.style.height = `${to}px`; setTimeout(() => { frame.style.height = ''; }, 460); }
+  frame.querySelectorAll('[data-next]').forEach((b) => b.addEventListener('click', () => show(++step, 1)));
+  frame.querySelector('[data-back]')?.addEventListener('click', () => show(--step, -1));
+  frame.querySelector('[data-finish]')?.addEventListener('click', () => closeDialog(steps));
+  frame.querySelector('button')?.focus();
+}
+document.querySelector('[data-open-steps]').addEventListener('click', () => { step = 0; frame.style.height = ''; frame.innerHTML = ''; steps.showModal(); show(0); });
+steps.addEventListener('cancel', (e) => { e.preventDefault(); closeDialog(steps); });
+</script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>View Transitions: reveal, reorder, toggle, slideshow, shared card</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; padding: 28px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+section { display: grid; gap: 14px; align-content: start; justify-items: center; padding: 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+h2 { justify-self: stretch; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.ctl { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.note { grid-column: 1 / -1; color: var(--muted); font-size: 14px; }
+</style>
+<style id="effect">
+::view-transition-group(*) { animation-duration: .5s; animation-timing-function: cubic-bezier(.2, 1, .3, 1); }
+.reveal-box { width: 220px; height: 140px; border-radius: 16px; display: grid; place-items: center; font: 800 26px/1 system-ui, sans-serif; color: #111; view-transition-name: reveal-box; }
+html:active-view-transition-type(reveal) ::view-transition-new(reveal-box) { animation: vt-reveal .7s cubic-bezier(.6, 0, .2, 1); }
+html:active-view-transition-type(reveal) ::view-transition-old(reveal-box) { animation: none; }
+@keyframes vt-reveal { from { clip-path: circle(0 at 50% 50%); } to { clip-path: circle(75% at 50% 50%); } }
+.vt-list { width: 100%; display: grid; gap: 8px; list-style: none; padding: 0; }
+.vt-list li { padding: 10px 12px; border-radius: 10px; background: var(--bg); font-weight: 600; }
+.vt-toggle { width: 70px; height: 38px; border-radius: 19px; border: 0; background: var(--line); display: flex; padding: 4px; cursor: pointer; }
+.vt-toggle[aria-checked="true"] { background: var(--accent); justify-content: flex-end; }
+.vt-toggle i { width: 30px; height: 30px; border-radius: 50%; background: #fff; view-transition-name: toggle-thumb; }
+.vt-slide { width: 240px; height: 150px; border-radius: 16px; display: grid; place-items: center; font: 800 40px/1 system-ui, sans-serif; color: #111; view-transition-name: slide; }
+html:active-view-transition-type(next) ::view-transition-old(slide) { animation: vt-out-l .45s cubic-bezier(.6, 0, .2, 1) both; }
+html:active-view-transition-type(next) ::view-transition-new(slide) { animation: vt-in-r .45s cubic-bezier(.6, 0, .2, 1) both; }
+html:active-view-transition-type(prev) ::view-transition-old(slide) { animation: vt-out-r .45s cubic-bezier(.6, 0, .2, 1) both; }
+html:active-view-transition-type(prev) ::view-transition-new(slide) { animation: vt-in-l .45s cubic-bezier(.6, 0, .2, 1) both; }
+@keyframes vt-out-l { to { transform: translateX(-110%); } }
+@keyframes vt-in-r { from { transform: translateX(110%); } }
+@keyframes vt-out-r { to { transform: translateX(110%); } }
+@keyframes vt-in-l { from { transform: translateX(-110%); } }
+.vt-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+.vt-card { aspect-ratio: 1; border: 0; border-radius: 14px; cursor: pointer; }
+.vt-detail { position: fixed; inset: 10vh 10vw; z-index: 20; border-radius: 22px; display: grid; place-items: end start; padding: 24px; font: 800 34px/1 system-ui, sans-serif; color: #111; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
+</style>
+</head>
+<body>
+<p class="note">Uses the browser's View Transitions API (Chrome, Edge, Safari 18+, Firefox 144+). Older browsers simply switch instantly.</p>
+<section><h2>Clip-path reveal</h2><div class="reveal-box" data-reveal style="background:#ffd23f">Day</div><button class="ctl" type="button" data-reveal-btn>Switch</button></section>
+<section><h2>Reorder</h2><ul class="vt-list" data-vt-list></ul><button class="ctl" type="button" data-sort>Sort</button></section>
+<section><h2>Toggle</h2><button class="vt-toggle" type="button" role="switch" aria-checked="false" aria-label="Toggle" data-vt-toggle><i></i></button></section>
+<section><h2>Directional slideshow</h2><div class="vt-slide" data-slide>1</div><div style="display:flex;gap:8px"><button class="ctl" type="button" data-go="prev">←</button><button class="ctl" type="button" data-go="next">→</button></div></section>
+<section><h2>Shared element card</h2><div class="vt-cards" data-vt-cards></div></section>
+<script>
+const vt = (update, types = []) => {
+  if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) { update(); return; }
+  let t;
+  try { t = document.startViewTransition({ update, types }); } catch (e) { t = document.startViewTransition(update); }
+  t.ready.catch(() => {});
+  t.finished.catch(() => {});
+  return t;
+};
+const rb = document.querySelector('[data-reveal]');
+let day = true;
+document.querySelector('[data-reveal-btn]').addEventListener('click', () => vt(() => { day = !day; rb.textContent = day ? 'Day' : 'Night'; rb.style.background = day ? '#ffd23f' : '#4f6bff'; rb.style.color = day ? '#111' : '#fff'; }, ['reveal']));
+const list = document.querySelector('[data-vt-list]');
+['Comet', 'Aurora', 'Nebula', 'Eclipse', 'Zenith'].forEach((t, i) => { const li = document.createElement('li'); li.textContent = t; li.style.viewTransitionName = `item-${i}`; list.append(li); });
+let asc = false;
+document.querySelector('[data-sort]').addEventListener('click', () => vt(() => { asc = !asc; [...list.children].sort((a, b) => (asc ? 1 : -1) * a.textContent.localeCompare(b.textContent)).forEach((li) => list.append(li)); }));
+const tg = document.querySelector('[data-vt-toggle]');
+tg.addEventListener('click', () => vt(() => tg.setAttribute('aria-checked', String(tg.getAttribute('aria-checked') !== 'true'))));
+const slide = document.querySelector('[data-slide]');
+let n = 1;
+const paint = () => { slide.textContent = n; slide.style.background = `hsl(${n * 50} 80% 65%)`; };
+paint();
+document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => vt(() => { n = ((n - 1 + (b.dataset.go === 'next' ? 1 : -1) + 7) % 7) + 1; paint(); }, [b.dataset.go])));
+const cards = document.querySelector('[data-vt-cards]');
+['#ff9a5a', '#7ad0ff', '#c9f27a', '#e3a8ff', '#ffe27a', '#7affd8'].forEach((c, i) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'vt-card'; b.style.background = c; b.setAttribute('aria-label', `Open card ${i + 1}`);
+  b.addEventListener('click', () => {
+    b.style.viewTransitionName = 'card-hero';
+    vt(() => {
+      b.style.viewTransitionName = '';
+      const d = document.createElement('div');
+      d.className = 'vt-detail'; d.style.background = c; d.textContent = `Card ${i + 1}`; d.style.viewTransitionName = 'card-hero';
+      d.setAttribute('role', 'dialog'); d.tabIndex = -1;
+      d.addEventListener('click', () => vt(() => { d.remove(); b.style.viewTransitionName = 'card-hero'; })?.finished.then(() => { b.style.viewTransitionName = ''; }));
+      document.body.append(d);
+      d.focus();
+    });
+  });
+  cards.append(b);
+});
+</script>
+</body>
+</html>

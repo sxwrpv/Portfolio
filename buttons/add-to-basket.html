@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Add to basket</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.top { display: flex; justify-content: flex-end; margin-bottom: 40px; }
+.shop { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; max-width: 900px; margin: 0 auto; }
+.item { display: grid; gap: 10px; padding: 14px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+.item__img { aspect-ratio: 1; border-radius: 12px; }
+.item b { font-size: 17px; }
+.item button { padding: 10px; border: 0; border-radius: 10px; background: var(--text); color: var(--bg); font: 700 15px/1 system-ui, sans-serif; cursor: pointer; }
+</style>
+<style id="effect">
+.basket { position: relative; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); font-size: 22px; }
+.basket__count { position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--accent); color: #111; font: 800 12px/22px system-ui, sans-serif; text-align: center; }
+.flyer { position: fixed; left: 0; top: 0; z-index: 40; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 14px; pointer-events: none; box-shadow: 0 12px 30px rgba(0, 0, 0, .5); }
+</style>
+</head>
+<body>
+<div class="top"><div class="basket" data-basket aria-label="Basket"><span aria-hidden="true">🧺</span><span class="basket__count" data-count aria-live="polite">0</span></div></div>
+<div class="shop" data-shop></div>
+<script>
+const ITEMS = [['Sunset in a jar', '#ffb36b', '#a8324a'], ['Pocket ocean', '#7ad0ff', '#273c8f'], ['Spare Sunday', '#c9f27a', '#2a6b3a'], ['Moon lamp', '#e3a8ff', '#4b2a8f']];
+const shop = document.querySelector('[data-shop]');
+const basket = document.querySelector('[data-basket]');
+const countEl = document.querySelector('[data-count]');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let count = 0;
+ITEMS.forEach(([name, a, b]) => {
+  const card = document.createElement('article');
+  card.className = 'item';
+  card.innerHTML = `<div class="item__img" style="background:linear-gradient(140deg,${a},${b})"></div><b>${name}</b><button type="button">Add to basket</button>`;
+  card.querySelector('button').addEventListener('click', () => fly(card.querySelector('.item__img'), `linear-gradient(140deg,${a},${b})`));
+  shop.append(card);
+});
+function fly(from, bg) {
+  const s = from.getBoundingClientRect();
+  const e = basket.getBoundingClientRect();
+  const x0 = s.left + s.width / 2, y0 = s.top + s.height / 2, x1 = e.left + e.width / 2, y1 = e.top + e.height / 2;
+  const cx = (x0 + x1) / 2, cy = Math.min(y0, y1) - 160;
+  const land = () => {
+    count++;
+    countEl.textContent = count;
+    if (!reduce) basket.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.25) rotate(-8deg)' }, { transform: 'scale(.95) rotate(4deg)' }, { transform: 'none' }], { duration: 520, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+  };
+  if (reduce) { land(); return; }
+  const el = document.createElement('div');
+  el.className = 'flyer';
+  el.style.background = bg;
+  document.body.append(el);
+  const frames = Array.from({ length: 31 }, (_, i) => {
+    const t = i / 30, u = 1 - t;
+    const x = u * u * x0 + 2 * u * t * cx + t * t * x1;
+    const y = u * u * y0 + 2 * u * t * cy + t * t * y1;
+    return { transform: `translate(${x}px, ${y}px) scale(${1 - t * .7}) rotate(${t * 220}deg)`, opacity: t > .92 ? 0 : 1 };
+  });
+  el.animate(frames, { duration: 750, easing: 'cubic-bezier(.4, 0, .6, 1)' }).onfinish = () => { el.remove(); land(); };
+}
+</script>
+</body>
+</html>

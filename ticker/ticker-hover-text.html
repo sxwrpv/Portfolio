@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Ticker hover text and ticker cursor</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 40px; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.menu { display: grid; gap: 4px; }
+.menu a { font: 800 clamp(34px, 6vw, 64px)/1.15 system-ui, sans-serif; letter-spacing: -.02em; color: var(--text); text-decoration: none; text-transform: uppercase; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(120px, 200px)); gap: 14px; }
+.tile { aspect-ratio: 1; border-radius: 16px; }
+small { color: var(--muted); }
+</style>
+<style id="effect">
+.tick-link { position: relative; display: block; overflow: hidden; }
+.tick-link__label { display: block; transition: transform .45s cubic-bezier(.7, 0, .2, 1); }
+.tick-link__run { position: absolute; inset: 0; display: flex; align-items: center; transform: translateY(100%); transition: transform .45s cubic-bezier(.7, 0, .2, 1); color: var(--accent); white-space: nowrap; }
+.tick-link__run span { display: inline-block; padding-right: .5em; animation: tick-run var(--d, 5s) linear infinite; }
+@keyframes tick-run { to { transform: translateX(-100%); } }
+.tick-link:hover .tick-link__label, .tick-link:focus-visible .tick-link__label { transform: translateY(-100%); }
+.tick-link:hover .tick-link__run, .tick-link:focus-visible .tick-link__run { transform: none; }
+.tick-cursor { position: fixed; left: 0; top: 0; z-index: 30; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; background: var(--accent); color: #111; display: grid; place-items: center; overflow: hidden; pointer-events: none; transform: translate(var(--x), var(--y)) scale(var(--s, 0)); transition: transform .35s cubic-bezier(.2, .9, .3, 1.3); }
+.tick-cursor__text { display: flex; white-space: nowrap; font: 800 15px/1 system-ui, sans-serif; text-transform: uppercase; letter-spacing: .06em; }
+.tick-cursor__text span { padding-right: .6em; animation: tick-run 3s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .tick-link__run span, .tick-cursor__text span { animation: none; } }
+</style>
+</head>
+<body>
+<nav class="menu" aria-label="Main">
+  <a class="tick-link" href="#" data-tick-link>Services</a>
+  <a class="tick-link" href="#" data-tick-link>Pricing</a>
+  <a class="tick-link" href="#" data-tick-link>Contact</a>
+</nav>
+<div class="tiles" data-cursor-zone>
+  <div class="tile" style="background:linear-gradient(135deg,#ff9a5a,#8a2c4a)"></div>
+  <div class="tile" style="background:linear-gradient(135deg,#7ad0ff,#2a3c8f)"></div>
+  <div class="tile" style="background:linear-gradient(135deg,#c9f27a,#2f6b3a)"></div>
+</div>
+<small>Hover the links, then move over the tiles</small>
+<div class="tick-cursor" data-tick-cursor aria-hidden="true"><div class="tick-cursor__text"><span>View · View · View · </span><span>View · View · View · </span></div></div>
+<script>
+document.querySelectorAll('[data-tick-link]').forEach((a) => {
+  const t = a.textContent;
+  a.innerHTML = `<span class="tick-link__label">${t}</span><span class="tick-link__run" aria-hidden="true"><span>${t} · ${t} · </span><span>${t} · ${t} · </span></span>`;
+  a.style.setProperty('--d', `${2 + t.length * .25}s`);
+});
+const cur = document.querySelector('[data-tick-cursor]');
+const zone = document.querySelector('[data-cursor-zone]');
+addEventListener('pointermove', (e) => { cur.style.setProperty('--x', `${e.clientX}px`); cur.style.setProperty('--y', `${e.clientY}px`); });
+zone.addEventListener('pointerenter', () => cur.style.setProperty('--s', 1));
+zone.addEventListener('pointerleave', () => cur.style.setProperty('--s', 0));
+</script>
+</body>
+</html>

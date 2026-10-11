@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Scroll-linked progress</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; --accent-2: #4f9dff; }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, sans-serif; }
+main { max-width: 720px; margin: 0 auto; padding: 80px 20px 60vh; display: grid; gap: 40px; }
+main p { color: var(--muted); }
+h2 { font-size: 22px; }
+</style>
+<style id="effect">
+.progress { position: fixed; left: 0; right: 0; height: 4px; transform-origin: 0 50%; transform: scaleX(var(--p, 0)); z-index: 10; }
+.progress--raw { top: 0; background: var(--accent); }
+.progress--spring { top: 6px; background: var(--accent-2); }
+.box-scroll { height: 240px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); position: relative; }
+.box-scroll__inner { padding: 20px; display: grid; gap: 14px; }
+.box-scroll__ring { position: sticky; top: 12px; float: right; margin: 12px; width: 56px; height: 56px; }
+.box-scroll__ring circle { fill: none; stroke-width: 6; }
+.box-scroll__ring .bg { stroke: var(--line); }
+.box-scroll__ring .fg { stroke: var(--accent); stroke-linecap: round; stroke-dasharray: 1 1; stroke-dashoffset: calc(1 - var(--p, 0)); transform: rotate(-90deg); transform-origin: 50% 50%; }
+.tracked { height: 160px; border-radius: 12px; display: grid; place-items: center; font: 700 28px/1 ui-monospace, Menlo, monospace; background: linear-gradient(90deg, var(--accent) calc(var(--p, 0) * 100%), var(--panel) 0); border: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="progress progress--raw" data-raw aria-hidden="true"></div>
+<div class="progress progress--spring" data-spring aria-hidden="true"></div>
+<main>
+  <section><h2>Page progress</h2><p>The orange bar follows the scroll position exactly. The blue bar chases it with a spring, so it eases and overshoots a little.</p></section>
+  <section><h2>Element scroll container</h2>
+    <div class="box-scroll" data-box>
+      <svg class="box-scroll__ring" viewBox="0 0 60 60" aria-hidden="true"><circle class="bg" cx="30" cy="30" r="24" pathLength="1"/><circle class="fg" cx="30" cy="30" r="24" pathLength="1"/></svg>
+      <div class="box-scroll__inner">
+        <p>Scroll inside this box. The ring shows how far through its content you are.</p>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent libero. Sed cursus ante dapibus diam.</p>
+        <p>Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris.</p>
+        <p>Fusce nec tellus sed augue semper porta. Mauris massa. Vestibulum lacinia arcu eget nulla.</p>
+        <p>Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos.</p>
+      </div>
+    </div>
+  </section>
+  <section><h2>Track an element through the viewport</h2><p>0% when its top enters from the bottom, 100% when its bottom leaves at the top.</p></section>
+  <div class="tracked" data-tracked>0%</div>
+  <p>Keep scrolling.</p>
+  <div style="height:60vh"></div>
+</main>
+<script>
+const raw = document.querySelector('[data-raw]');
+const spr = document.querySelector('[data-spring]');
+const box = document.querySelector('[data-box]');
+const tracked = document.querySelector('[data-tracked]');
+const pageP = () => scrollY / (document.documentElement.scrollHeight - innerHeight || 1);
+let s = { x: 0, v: 0 };
+let last = performance.now();
+const loop = (now) => {
+  const dt = Math.min(.05, (now - last) / 1000);
+  last = now;
+  const target = pageP();
+  for (let i = 0; i < 4; i++) { const f = -280 * (s.x - target) - 30 * s.v; s.v += f * (dt / 4); s.x += s.v * (dt / 4); }
+  raw.style.setProperty('--p', target.toFixed(4));
+  spr.style.setProperty('--p', Math.max(0, s.x).toFixed(4));
+  const r = tracked.getBoundingClientRect();
+  const tp = Math.min(1, Math.max(0, (innerHeight - r.top) / (innerHeight + r.height)));
+  tracked.style.setProperty('--p', tp.toFixed(4));
+  tracked.textContent = `${Math.round(tp * 100)}%`;
+  requestAnimationFrame(loop);
+};
+requestAnimationFrame(loop);
+box.addEventListener('scroll', () => box.style.setProperty('--p', (box.scrollTop / (box.scrollHeight - box.clientHeight)).toFixed(4)), { passive: true });
+</script>
+</body>
+</html>

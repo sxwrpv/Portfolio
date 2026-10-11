@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Page transitions: curtains</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.top { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.top nav { display: flex; gap: 6px; }
+.top nav a { padding: 8px 14px; border-radius: 999px; color: var(--text); text-decoration: none; }
+.top nav a[aria-current] { background: var(--text); color: var(--bg); }
+.controls { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 14px; }
+select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); font: inherit; }
+.page { min-height: calc(100vh - 70px); display: grid; place-content: center; text-align: center; gap: 12px; padding: 40px 20px; }
+.page h1 { font: 900 clamp(52px, 12vw, 160px)/.9 system-ui, sans-serif; letter-spacing: -.04em; }
+.page p { color: var(--muted); }
+.scope-demo { max-width: 520px; margin: 0 auto 80px; padding: 0 20px; display: grid; gap: 10px; }
+.scope-card { position: relative; overflow: hidden; height: 220px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); display: grid; place-items: center; font: 800 44px/1 system-ui, sans-serif; }
+.scope-demo button { justify-self: start; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+</style>
+<style id="effect">
+.curtain { position: fixed; inset: 0; z-index: 50; pointer-events: none; display: grid; }
+.curtain--scoped { position: absolute; }
+.curtain.is-active { pointer-events: auto; }
+.curtain__piece { background: var(--curtain, #ff6a3d); will-change: transform, clip-path, opacity; }
+.curtain[data-layout="cols"] { grid-auto-flow: column; grid-auto-columns: 1fr; }
+.curtain[data-layout="rows"] { grid-auto-flow: row; grid-auto-rows: 1fr; }
+.curtain[data-layout="grid"] { grid-template-columns: repeat(var(--cols), 1fr); grid-auto-rows: 1fr; }
+</style>
+</head>
+<body>
+<header class="top">
+  <nav aria-label="Pages"><a href="#home" data-go="home" aria-current="page">Home</a><a href="#work" data-go="work">Work</a><a href="#contact" data-go="contact">Contact</a></nav>
+  <div class="controls">
+    <label>Cover <select data-cover></select></label>
+    <label>Reveal <select data-reveal><option value="same">same as cover</option></select></label>
+  </div>
+</header>
+<main data-pages>
+  <section class="page" data-page="home"><h1>Home</h1><p>Pick an effect, then switch pages.</p></section>
+  <section class="page" data-page="work" hidden><h1 style="color:#4f9dff">Work</h1><p>The curtain covers, the content swaps, then it reveals.</p></section>
+  <section class="page" data-page="contact" hidden><h1 style="color:#ff6a3d">Contact</h1><p>"Iris from click" grows from where you clicked.</p></section>
+</main>
+<section class="scope-demo">
+  <p style="color:var(--muted)">Scoped to one element:</p>
+  <div class="scope-card" data-scope>01</div>
+  <button type="button" data-scope-next>Next card</button>
+</section>
+<script>
+const EFFECTS = {
+  wipe: { n: 1, cover: () => [{ transform: 'translateX(-100%)' }, { transform: 'none' }], reveal: () => [{ transform: 'none' }, { transform: 'translateX(100%)' }] },
+  clipWipe: { n: 1, cover: () => [{ clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0 0 0 0)' }], reveal: () => [{ clipPath: 'inset(0 0 0 0)' }, { clipPath: 'inset(0 0 100% 0)' }] },
+  staggerWipe: { n: 6, layout: 'cols', stagger: 55, cover: () => [{ transform: 'translateY(101%)' }, { transform: 'none' }], reveal: () => [{ transform: 'none' }, { transform: 'translateY(-101%)' }] },
+  blinds: { n: 9, layout: 'rows', stagger: 35, cover: () => [{ transform: 'scaleY(0)', transformOrigin: '50% 0' }, { transform: 'scaleY(1.02)', transformOrigin: '50% 0' }], reveal: () => [{ transform: 'scaleY(1.02)', transformOrigin: '50% 100%' }, { transform: 'scaleY(0)', transformOrigin: '50% 100%' }] },
+  shutter: { n: 12, layout: 'cols', stagger: 25, cover: () => [{ transform: 'scaleX(0)', transformOrigin: '0 50%' }, { transform: 'scaleX(1.03)', transformOrigin: '0 50%' }], reveal: () => [{ transform: 'scaleX(1.03)', transformOrigin: '100% 50%' }, { transform: 'scaleX(0)', transformOrigin: '100% 50%' }] },
+  doors: { n: 2, layout: 'cols', stagger: 0, cover: (i) => [{ transform: `translateX(${i ? 100 : -100}%)` }, { transform: 'none' }], reveal: (i) => [{ transform: 'none' }, { transform: `translateX(${i ? 100 : -100}%)` }] },
+  iris: { n: 1, cover: (i, at) => [{ clipPath: `circle(0% at ${at})` }, { clipPath: `circle(150% at ${at})` }], reveal: (i, at) => [{ clipPath: `circle(150% at ${at})` }, { clipPath: `circle(0% at ${at})` }] },
+  irisClick: { n: 1, click: true, cover: (i, at) => [{ clipPath: `circle(0% at ${at})` }, { clipPath: `circle(150% at ${at})` }], reveal: (i, at) => [{ clipPath: `circle(150% at ${at})` }, { clipPath: `circle(0% at ${at})` }] },
+  pixels: { n: 'grid', layout: 'grid', random: 420, cover: () => [{ opacity: 0 }, { opacity: 1 }], reveal: () => [{ opacity: 1 }, { opacity: 0 }] },
+  fade: { n: 1, cover: () => [{ opacity: 0 }, { opacity: 1 }], reveal: () => [{ opacity: 1 }, { opacity: 0 }] },
+};
+const NAMES = { wipe: 'Wipe', clipWipe: 'Clip wipe', staggerWipe: 'Stagger wipe', blinds: 'Blinds', shutter: 'Shutter', doors: 'Doors', iris: 'Iris', irisClick: 'Iris from click', pixels: 'Pixels', fade: 'Fade' };
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const EASE = 'cubic-bezier(.76, 0, .24, 1)';
+function curtain(host = document.body, scoped = false) {
+  const el = document.createElement('div');
+  el.className = `curtain${scoped ? ' curtain--scoped' : ''}`;
+  el.setAttribute('aria-hidden', 'true');
+  host.append(el);
+  const build = (fx) => {
+    el.innerHTML = '';
+    el.dataset.layout = fx.layout || '';
+    let n = fx.n;
+    if (n === 'grid') {
+      const cols = 14;
+      const rows = Math.ceil(cols * (el.clientHeight / el.clientWidth || .6));
+      el.style.setProperty('--cols', cols);
+      n = cols * rows;
+    }
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement('div');
+      p.className = 'curtain__piece';
+      if (fx.n === 1 || fx.layout === 'grid') p.style.gridArea = fx.layout === 'grid' ? '' : '1 / 1';
+      el.append(p);
+    }
+    return [...el.children];
+  };
+  const run = (fx, phase, at, duration) => {
+    const pieces = el.children.length ? [...el.children] : build(fx);
+    return Promise.all(pieces.map((p, i) => {
+      const delay = fx.random ? Math.random() * fx.random : (fx.stagger || 0) * i;
+      return p.animate(fx[phase](i, at), { duration, delay, easing: EASE, fill: 'forwards' }).finished;
+    }));
+  };
+  return {
+    async transition(coverName, revealName, swap, at = '50% 50%') {
+      if (reduce) { swap(); return; }
+      el.classList.add('is-active');
+      const cover = EFFECTS[coverName];
+      const reveal = EFFECTS[revealName];
+      build(cover);
+      await run(cover, 'cover', at, 600);
+      swap();
+      if (reveal !== cover) build(reveal);
+      await new Promise((r) => setTimeout(r, 120));
+      await run(reveal, 'reveal', at, 650);
+      el.innerHTML = '';
+      el.classList.remove('is-active');
+    },
+  };
+}
+const coverSel = document.querySelector('[data-cover]');
+const revealSel = document.querySelector('[data-reveal]');
+Object.entries(NAMES).forEach(([k, v]) => { coverSel.add(new Option(v, k)); revealSel.add(new Option(v, k)); });
+const page = curtain();
+let busy = false;
+document.querySelectorAll('[data-go]').forEach((a) => a.addEventListener('click', async (e) => {
+  e.preventDefault();
+  if (busy || a.hasAttribute('aria-current')) return;
+  busy = true;
+  const coverName = coverSel.value;
+  const revealName = revealSel.value === 'same' ? coverName : revealSel.value;
+  const at = EFFECTS[coverName].click ? `${e.clientX}px ${e.clientY}px` : '50% 50%';
+  await page.transition(coverName, revealName, () => {
+    document.querySelectorAll('[data-page]').forEach((p) => { p.hidden = p.dataset.page !== a.dataset.go; });
+    document.querySelectorAll('[data-go]').forEach((x) => x.toggleAttribute('aria-current', x === a));
+    scrollTo(0, 0);
+  }, at);
+  busy = false;
+}));
+const card = document.querySelector('[data-scope]');
+const scoped = curtain(card, true);
+let n = 1;
+document.querySelector('[data-scope-next]').addEventListener('click', () => {
+  scoped.transition('staggerWipe', 'staggerWipe', () => {
+    n = n % 9 + 1;
+    card.firstChild.nodeValue = String(n).padStart(2, '0');
+    card.style.color = `hsl(${n * 40} 80% 65%)`;
+  });
+});
+</script>
+</body>
+</html>

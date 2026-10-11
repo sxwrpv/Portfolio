@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Split text</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 40px; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; text-align: center; }
+h1 { max-width: 14ch; font: 800 clamp(36px, 7vw, 76px)/1.02 system-ui, -apple-system, sans-serif; letter-spacing: -.02em; }
+.tabs { display: flex; gap: 8px; }
+.tabs button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+</style>
+<style id="effect">
+.split__line { display: block; overflow: hidden; padding-bottom: .06em; }
+.split__word { display: inline-block; white-space: pre; }
+.split__char { display: inline-block; }
+.is-reveal .split__word { animation: split-rise .9s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--w) * 70ms); }
+@keyframes split-rise { from { transform: translateY(105%); } }
+.is-scatter .split__char { animation: split-scatter 1.1s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--c) * 12ms); }
+@keyframes split-scatter { from { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)); filter: blur(6px); } }
+.is-wavy .split__char { animation: split-wave 1.6s ease-in-out infinite; animation-delay: calc(var(--c) * -90ms); }
+@keyframes split-wave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-.18em); color: var(--accent); } }
+@media (prefers-reduced-motion: reduce) { .split__word, .split__char { animation: none !important; } }
+</style>
+</head>
+<body>
+<h1 data-split>Text that moves with intent</h1>
+<div class="tabs" role="group" aria-label="Effect">
+  <button type="button" data-fx="reveal" aria-pressed="true">Reveal</button>
+  <button type="button" data-fx="scatter" aria-pressed="false">Scatter</button>
+  <button type="button" data-fx="wavy" aria-pressed="false">Wavy</button>
+</div>
+<script>
+function splitText(el) {
+  const text = el.textContent.trim();
+  el.setAttribute('aria-label', text);
+  el.textContent = '';
+  const words = text.split(/\s+/);
+  let c = 0;
+  words.forEach((word, w) => {
+    const ws = document.createElement('span');
+    ws.className = 'split__word';
+    ws.setAttribute('aria-hidden', 'true');
+    ws.style.setProperty('--w', w);
+    [...word].forEach((ch) => {
+      const cs = document.createElement('span');
+      cs.className = 'split__char';
+      cs.textContent = ch;
+      cs.style.setProperty('--c', c++);
+      cs.style.setProperty('--x', `${(Math.random() - .5) * 240}px`);
+      cs.style.setProperty('--y', `${(Math.random() - .5) * 200}px`);
+      cs.style.setProperty('--r', `${(Math.random() - .5) * 120}deg`);
+      ws.append(cs);
+    });
+    el.append(ws, w < words.length - 1 ? ' ' : '');
+  });
+  groupLines(el);
+}
+function groupLines(el) {
+  const words = [...el.querySelectorAll('.split__word')];
+  el.querySelectorAll('.split__line').forEach((l) => l.replaceWith(...l.childNodes));
+  let top = null, line = null;
+  words.forEach((w) => {
+    const t = w.offsetTop;
+    if (t !== top) { top = t; line = document.createElement('span'); line.className = 'split__line'; w.before(line); }
+    line.append(w, ' ');
+  });
+}
+const h = document.querySelector('[data-split]');
+splitText(h);
+const play = (fx) => {
+  h.classList.remove('is-reveal', 'is-scatter', 'is-wavy');
+  void h.offsetWidth;
+  h.classList.add(`is-${fx}`);
+};
+document.querySelectorAll('[data-fx]').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-fx]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  play(b.dataset.fx);
+}));
+play('reveal');
+let rw;
+addEventListener('resize', () => { clearTimeout(rw); rw = setTimeout(() => groupLines(h), 150); });
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Context menu with submenu</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.area { width: min(80vw, 520px); height: 300px; display: grid; place-items: center; border: 1.5px dashed var(--line); border-radius: 18px; color: var(--muted); }
+</style>
+<style id="effect">
+.cmenu { position: fixed; z-index: 40; min-width: 210px; padding: 6px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 20px 50px rgba(0, 0, 0, .5); list-style: none; transform-origin: var(--ox, 0) var(--oy, 0); animation: cm-in .22s cubic-bezier(.2, 1.2, .3, 1); }
+.cmenu[hidden] { display: none; }
+@keyframes cm-in { from { opacity: 0; transform: scale(.85); } }
+.cmenu__item { position: relative; display: flex; justify-content: space-between; gap: 18px; padding: 8px 10px; border-radius: 8px; cursor: default; outline: none; }
+.cmenu__item:hover, .cmenu__item:focus-visible, .cmenu__item.is-open { background: var(--line); }
+.cmenu__item small { color: var(--muted); }
+.cmenu__sep { height: 1px; margin: 5px 6px; background: var(--line); }
+.cmenu--sub { position: absolute; left: calc(100% + 4px); top: -6px; }
+.cmenu__danger { color: #ff6b6b; }
+.cmenu__cone { position: fixed; z-index: 39; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="area" data-area>Right-click (or long-press) here</div>
+<ul class="cmenu" data-menu hidden role="menu">
+  <li class="cmenu__item" role="menuitem" tabindex="-1">Open <small>⌘O</small></li>
+  <li class="cmenu__item" role="menuitem" tabindex="-1">Rename <small>F2</small></li>
+  <li class="cmenu__item" role="menuitem" tabindex="-1" aria-haspopup="menu" data-sub>Share <small>›</small>
+    <ul class="cmenu cmenu--sub" role="menu" hidden data-submenu>
+      <li class="cmenu__item" role="menuitem" tabindex="-1">Copy link</li>
+      <li class="cmenu__item" role="menuitem" tabindex="-1">Email</li>
+      <li class="cmenu__item" role="menuitem" tabindex="-1">WhatsApp</li>
+    </ul>
+  </li>
+  <li class="cmenu__sep" role="separator"></li>
+  <li class="cmenu__item cmenu__danger" role="menuitem" tabindex="-1">Delete <small>⌫</small></li>
+</ul>
+<script>
+const area = document.querySelector('[data-area]');
+const menu = document.querySelector('[data-menu]');
+const subItem = menu.querySelector('[data-sub]');
+const sub = menu.querySelector('[data-submenu]');
+let subTimer, last = [];
+const openAt = (x, y) => {
+  menu.hidden = false;
+  const r = menu.getBoundingClientRect();
+  const left = Math.min(x, innerWidth - r.width - 8), top = Math.min(y, innerHeight - r.height - 8);
+  menu.style.left = `${left}px`; menu.style.top = `${top}px`;
+  menu.style.setProperty('--ox', `${x - left}px`); menu.style.setProperty('--oy', `${y - top}px`);
+  menu.style.animation = 'none'; void menu.offsetWidth; menu.style.animation = '';
+  menu.querySelector('.cmenu__item').focus();
+};
+const close = () => { menu.hidden = true; sub.hidden = true; subItem.classList.remove('is-open'); };
+area.addEventListener('contextmenu', (e) => { e.preventDefault(); openAt(e.clientX, e.clientY); });
+document.addEventListener('pointerdown', (e) => { if (!menu.contains(e.target)) close(); });
+addEventListener('keydown', (e) => {
+  if (menu.hidden) return;
+  const scope = sub.hidden ? menu : sub;
+  const items = [...scope.querySelectorAll(':scope > .cmenu__item')];
+  const i = items.indexOf(document.activeElement);
+  if (e.key === 'Escape') { if (!sub.hidden) { sub.hidden = true; subItem.classList.remove('is-open'); subItem.focus(); } else close(); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+  if (e.key === 'ArrowRight' && document.activeElement === subItem) { openSub(); sub.querySelector('.cmenu__item').focus(); }
+  if (e.key === 'ArrowLeft' && !sub.hidden) { sub.hidden = true; subItem.classList.remove('is-open'); subItem.focus(); }
+});
+const openSub = () => { clearTimeout(subTimer); sub.hidden = false; subItem.classList.add('is-open'); };
+const inCone = (x, y) => {
+  if (sub.hidden || last.length < 2) return false;
+  const r = sub.getBoundingClientRect();
+  const [px, py] = last[0];
+  const sign = (a, b, c) => (a[0] - c[0]) * (b[1] - c[1]) - (b[0] - c[0]) * (a[1] - c[1]);
+  const p = [x, y], a = [px, py], b = [r.left, r.top - 20], c = [r.left, r.bottom + 20];
+  const d1 = sign(p, a, b), d2 = sign(p, b, c), d3 = sign(p, c, a);
+  return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+};
+menu.addEventListener('pointermove', (e) => { last.unshift([e.clientX, e.clientY]); last = last.slice(0, 3); });
+menu.querySelectorAll(':scope > .cmenu__item').forEach((item) => item.addEventListener('pointerenter', (e) => {
+  if (item === subItem) { openSub(); return; }
+  if (inCone(e.clientX, e.clientY)) { clearTimeout(subTimer); subTimer = setTimeout(() => { sub.hidden = true; subItem.classList.remove('is-open'); }, 300); return; }
+  sub.hidden = true;
+  subItem.classList.remove('is-open');
+}));
+sub.addEventListener('pointerenter', () => clearTimeout(subTimer));
+menu.querySelectorAll('.cmenu__item:not([data-sub])').forEach((item) => item.addEventListener('click', close));
+</script>
+</body>
+</html>

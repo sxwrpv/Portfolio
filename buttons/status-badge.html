@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Multi-state badge</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 22px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.row { display: flex; gap: 8px; }
+.row button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+</style>
+<style id="effect">
+.badge { --c: #a1a1aa; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px 0 12px; border-radius: 999px; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); font: 700 15px/1 system-ui, sans-serif; overflow: hidden; white-space: nowrap; transition: background-color .3s, color .3s; }
+.badge[data-state="processing"] { --c: #4f9dff; }
+.badge[data-state="success"] { --c: #3ddc84; }
+.badge[data-state="error"] { --c: #ff4d4d; }
+.badge__icon { position: relative; width: 18px; height: 18px; flex: none; }
+.badge__icon > * { position: absolute; inset: 0; opacity: 0; transform: scale(.4); transition: opacity .2s, transform .35s cubic-bezier(.2, 1.5, .3, 1); }
+.badge__icon svg { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.badge__spin { border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: badge-spin .7s linear infinite; }
+.badge__dot { inset: 5px !important; border-radius: 50%; background: currentColor; }
+.badge[data-state="idle"] .badge__dot, .badge[data-state="processing"] .badge__spin, .badge[data-state="success"] .badge__ok, .badge[data-state="error"] .badge__err { opacity: 1; transform: none; }
+.badge.is-shake { animation: badge-shake .45s; }
+@keyframes badge-spin { to { rotate: 360deg; } }
+@keyframes badge-shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+</style>
+</head>
+<body>
+<span class="badge" data-badge data-state="idle" role="status">
+  <span class="badge__icon" aria-hidden="true"><i class="badge__dot"></i><i class="badge__spin"></i><svg class="badge__ok" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><svg class="badge__err" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+  <span data-label>Ready</span>
+</span>
+<div class="row"><button type="button" data-run="success">Run (succeeds)</button><button type="button" data-run="error">Run (fails)</button></div>
+<script>
+const badge = document.querySelector('[data-badge]');
+const label = badge.querySelector('[data-label]');
+const LABELS = { idle: 'Ready', processing: 'Processing…', success: 'Saved', error: 'Something went wrong' };
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function setState(state) {
+  const from = badge.getBoundingClientRect().width;
+  badge.dataset.state = state;
+  label.textContent = LABELS[state];
+  const to = badge.getBoundingClientRect().width;
+  if (!reduce && from !== to) badge.animate([{ width: `${from}px` }, { width: `${to}px` }], { duration: 420, easing: 'cubic-bezier(.2, .9, .25, 1.1)' });
+  if (state === 'error' && !reduce) { badge.classList.remove('is-shake'); void badge.offsetWidth; badge.classList.add('is-shake'); }
+}
+let t;
+document.querySelectorAll('[data-run]').forEach((b) => b.addEventListener('click', () => {
+  clearTimeout(t);
+  setState('processing');
+  t = setTimeout(() => { setState(b.dataset.run); t = setTimeout(() => setState('idle'), 2200); }, 1400);
+}));
+</script>
+</body>
+</html>

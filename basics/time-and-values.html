@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Frame loop, time, values and colour interpolation</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; padding: 28px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+section { display: grid; gap: 14px; align-content: start; justify-items: center; min-height: 260px; padding: 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+h2 { justify-self: stretch; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.ctl { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+</style>
+<style id="effect">
+.cube-scene { width: 140px; height: 140px; perspective: 600px; margin-top: 20px; }
+.cube { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
+.cube i { position: absolute; inset: 0; border-radius: 12px; opacity: .85; border: 2px solid rgba(255, 255, 255, .3); }
+.cube i:nth-child(1) { transform: translateZ(70px); background: #ff6a3d; }
+.cube i:nth-child(2) { transform: rotateY(180deg) translateZ(70px); background: #4f9dff; }
+.cube i:nth-child(3) { transform: rotateY(90deg) translateZ(70px); background: #3ddc84; }
+.cube i:nth-child(4) { transform: rotateY(-90deg) translateZ(70px); background: #ffd23f; }
+.cube i:nth-child(5) { transform: rotateX(90deg) translateZ(70px); background: #b26bff; }
+.cube i:nth-child(6) { transform: rotateX(-90deg) translateZ(70px); background: #ff5fa2; }
+.orbit { position: relative; width: 160px; height: 160px; border-radius: 50%; border: 1px dashed var(--line); }
+.orbit i { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px; border-radius: 50%; background: var(--accent); }
+.counter { font: 800 56px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.lerp { width: 100%; display: grid; gap: 8px; }
+.lerp div { height: 42px; border-radius: 10px; }
+.lerp small { color: var(--muted); }
+</style>
+</head>
+<body>
+<section><h2>Frame loop · 3D cube</h2><div class="cube-scene"><div class="cube" data-cube><i></i><i></i><i></i><i></i><i></i><i></i></div></div></section>
+<section><h2>Constant-speed time</h2><div class="orbit"><i data-orbit></i></div></section>
+<section><h2>Animated value rendered as text</h2><div class="counter" data-counter aria-live="polite">0</div><button class="ctl" type="button" data-count>Count to 100</button></section>
+<section><h2>Colour interpolation</h2>
+  <div class="lerp"><small>Browser default (sRGB) · dims in the middle</small><div style="background:linear-gradient(90deg in srgb, #ff0000, #00ff00)"></div><small>Linear RGB · brighter, like Motion's default</small><div style="background:linear-gradient(90deg in srgb-linear, #ff0000, #00ff00)"></div><small>OKLCH · perceptual</small><div style="background:linear-gradient(90deg in oklch, #ff0000, #00ff00)"></div></div>
+</section>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cube = document.querySelector('[data-cube]');
+const orbit = document.querySelector('[data-orbit]');
+const t0 = performance.now();
+const loop = (now) => {
+  const t = (now - t0) / 1000;
+  if (!reduce) {
+    cube.style.transform = `rotateX(${t * 40}deg) rotateY(${t * 60}deg)`;
+    orbit.style.transform = `rotate(${t * 90}deg) translateX(70px)`;
+  }
+  requestAnimationFrame(loop);
+};
+requestAnimationFrame(loop);
+const counter = document.querySelector('[data-counter]');
+document.querySelector('[data-count]').addEventListener('click', () => {
+  const start = performance.now(), dur = reduce ? 1 : 1600;
+  const ease = (x) => 1 - Math.pow(1 - x, 3);
+  const step = (now) => { const p = Math.min(1, (now - start) / dur); counter.textContent = Math.round(ease(p) * 100); if (p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+});
+</script>
+</body>
+</html>

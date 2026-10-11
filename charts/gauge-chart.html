@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Gauge</title>
+<style id="page">
+:root {
+  color-scheme: dark;
+  --bg: #070708; --panel: #0f0f11; --line: rgba(255, 255, 255, .08); --grid: rgba(255, 255, 255, .07);
+  --text: #f4f4f5; --muted: #a1a1aa; --dim: #71717a;
+  --c1: #f4f4f5; --c2: #a1a1aa; --c3: #71717a; --c4: #52525b; --c5: #3f3f46;
+  --s0: #1c1c1f; --s1: #3f3f46; --s2: #52525b; --s3: #71717a; --s4: #a1a1aa; --s5: #f4f4f5;
+  --up: #22c55e; --down: #ef4444;
+  --ease: cubic-bezier(.85, 0, .15, 1); --out: cubic-bezier(.16, 1, .3, 1);
+}
+[data-theme="lagoon"] { --c1: #67e8f9; --c2: #22d3ee; --c3: #06b6d4; --c4: #0891b2; --c5: #0e7490; --s1: #083344; --s2: #155e75; --s3: #0891b2; --s4: #22d3ee; --s5: #67e8f9; }
+[data-theme="warm"] { --c1: #fcd34d; --c2: #fbbf24; --c3: #f59e0b; --c4: #d97706; --c5: #b45309; --s1: #451a03; --s2: #92400e; --s3: #d97706; --s4: #fbbf24; --s5: #fcd34d; }
+[data-theme="forest"] { --c1: #5eead4; --c2: #2dd4bf; --c3: #14b8a6; --c4: #0d9488; --c5: #0f766e; --s1: #042f2e; --s2: #115e59; --s3: #0d9488; --s4: #2dd4bf; --s5: #5eead4; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; padding: 24px 16px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+.card { width: min(92vw, 880px); padding: 22px 22px 18px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.head h1 { font: 650 15px/1.3 system-ui, sans-serif; letter-spacing: -.01em; }
+.head p { margin-top: 4px; color: var(--muted); font-size: 13px; }
+.themes { display: flex; gap: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 99px; flex: none; }
+.themes button { width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; background: var(--sw); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15); transition: transform .3s var(--out), box-shadow .3s; }
+.themes button:hover { transform: scale(1.15); }
+.themes button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 3.5px var(--text); }
+.note { margin-top: 14px; color: var(--dim); font-size: 12px; }
+.tip { position: fixed; left: 0; top: 0; z-index: 10; min-width: 120px; padding: 8px 10px; border-radius: 10px; background: rgba(24, 24, 27, .92); border: 1px solid rgba(255, 255, 255, .1); box-shadow: 0 12px 32px rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font-size: 12px; pointer-events: none; opacity: 0; transform: translate(var(--tx, 0), var(--ty, 0)) scale(.96); transition: opacity .15s, transform .25s var(--out); font-variant-numeric: tabular-nums; }
+.tip.on { opacity: 1; transform: translate(var(--tx, 0), var(--ty, 0)); }
+.tip b { display: block; margin-bottom: 4px; font-weight: 600; }
+.tip .row { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.tip .row i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
+.tip .row span { margin-left: auto; padding-left: 12px; color: var(--text); font-weight: 600; }
+.axis text, .lbl { fill: var(--dim); font: 11px system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.gridline { stroke: var(--grid); stroke-dasharray: 3 4; }
+.toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.seg { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; }
+.seg button { padding: 5px 10px; border: 0; border-radius: 7px; background: none; color: var(--muted); font: 500 12px system-ui, sans-serif; cursor: pointer; transition: background .2s, color .2s; }
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: rgba(255, 255, 255, .09); color: var(--text); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.legend > * { display: flex; align-items: center; gap: 7px; padding: 0; border: 0; background: none; color: var(--muted); font: 500 12px system-ui, sans-serif; cursor: default; transition: opacity .25s, color .25s; }
+.legend i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); flex: none; }
+.legend .off { opacity: .35; }
+@media (max-width: 560px) { .card { padding: 16px 14px 14px; } .head { flex-direction: column; } }
+</style>
+<style id="effect">
+.flow { display: inline-flex; align-items: flex-start; line-height: 1; font-variant-numeric: tabular-nums; }
+.flow .flow__col, .flow .flow__col > span { margin: 0; padding: 0; color: inherit; font: inherit; line-height: 1; }
+.flow .flow__col { display: inline-block; height: 1em; overflow: hidden; }
+.flow .flow__col > span { display: block; transition: transform .7s cubic-bezier(.16, 1, .3, 1); }
+@media (prefers-reduced-motion: reduce) { .flow .flow__col > span { transition: none; } }
+.stage { position: relative; display: grid; place-items: center; }
+.stage svg { width: min(100%, 380px); height: auto; overflow: visible; }
+.notch { stroke-linecap: round; stroke-width: 6; transition: stroke .35s; }
+.center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding-top: 8px; }
+.center b { font: 700 38px/1 system-ui, sans-serif; letter-spacing: -.02em; }
+.center span { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; }
+.center em { display: block; margin-top: 6px; font: 600 12px system-ui, sans-serif; font-style: normal; color: var(--dim); font-variant-numeric: tabular-nums; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px; margin-top: 6px; }
+.controls input { width: min(260px, 70vw); accent-color: var(--c1); }
+</style>
+</head>
+<body>
+<main class="card">
+  <header class="head"><div><h1>Gauge</h1><p>A notched arc. Notches light up one after another as the value climbs, and the figure in the middle rolls with them.</p></div><div class="themes" data-themes role="group" aria-label="Colour theme"><button type="button" data-t="mono" style="--sw:#a1a1aa" aria-label="Mono theme" title="Mono"></button><button type="button" data-t="lagoon" style="--sw:#22d3ee" aria-label="Lagoon theme" title="Lagoon"></button><button type="button" data-t="warm" style="--sw:#fbbf24" aria-label="Warm theme" title="Warm"></button><button type="button" data-t="forest" style="--sw:#2dd4bf" aria-label="Forest theme" title="Forest"></button></div></header>
+  <div class="stage">
+    <svg viewBox="-170 -170 340 300" role="img" aria-label="Gauge of annual run rate against target"><defs><linearGradient id="lit" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="var(--c4)"/><stop offset="1" stop-color="var(--c1)"/></linearGradient></defs><g data-notches></g></svg>
+    <div class="center"><b data-value>$0</b><span>ARR run rate</span><em data-pct>0% of $600K target</em></div>
+  </div>
+  <div class="controls">
+    <input type="range" min="0" max="600000" step="1000" value="428000" data-range aria-label="Run rate">
+    <div class="seg" data-presets role="group" aria-label="Presets"><button type="button" data-v="120000" aria-pressed="false">Q1</button><button type="button" data-v="265000" aria-pressed="false">Q2</button><button type="button" data-v="428000" aria-pressed="true">Q3</button><button type="button" data-v="560000" aria-pressed="false">Q4</button></div>
+  </div>
+  <p class="note">Drag the slider or pick a preset. Lit notches stretch outward slightly.</p>
+</main>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs = {}, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.append(n); return n; };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const bezier = (x1, y1, x2, y2) => (t) => {
+  if (t <= 0 || t >= 1) return clamp(t, 0, 1);
+  let u = t;
+  for (let i = 0; i < 8; i++) {
+    const x = 3 * (1 - u) ** 2 * u * x1 + 3 * (1 - u) * u * u * x2 + u ** 3 - t;
+    const dx = 3 * (1 - u) ** 2 * x1 + 6 * (1 - u) * u * (x2 - x1) + 3 * u * u * (1 - x2);
+    if (Math.abs(x) < 1e-5 || !dx) break;
+    u = clamp(u - x / dx, 0, 1);
+  }
+  return 3 * (1 - u) ** 2 * u * y1 + 3 * (1 - u) * u * u * y2 + u ** 3;
+};
+const easeChart = bezier(.85, 0, .15, 1);
+const easeOut = bezier(.16, 1, .3, 1);
+const tween = (ms, fn, easing = easeChart, delay = 0) => new Promise((done) => {
+  if (reduce || ms <= 0) { fn(1); done(); return; }
+  const t0 = performance.now() + delay;
+  const step = (now) => {
+    const t = clamp((now - t0) / ms, 0, 1);
+    fn(easing(t));
+    if (t < 1) requestAnimationFrame(step); else done();
+  };
+  requestAnimationFrame(step);
+});
+const fmt = (v, o) => new Intl.NumberFormat('en-US', o).format(v);
+const compact = (v) => fmt(v, { notation: 'compact', maximumFractionDigits: 1 });
+const rng = (seed) => () => { seed |= 0; seed = seed + 0x6d2b79f5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const whenVisible = (node, fn) => new IntersectionObserver(([e], o) => { if (e.isIntersecting) { o.disconnect(); fn(); } }, { threshold: .25 }).observe(node);
+const hoverable = (node, on, off) => {
+  if (!/^(BUTTON|A|INPUT)$/.test(node.tagName)) node.tabIndex = 0;
+  node.addEventListener('pointerenter', on); node.addEventListener('pointerleave', off);
+  node.addEventListener('focus', on); node.addEventListener('blur', off);
+};
+const onResize = (node, fn) => { let w = node.clientWidth; new ResizeObserver(() => { if (node.clientWidth !== w) { w = node.clientWidth; fn(); } }).observe(node); };
+(() => {
+  const box = document.querySelector('[data-themes]');
+  const set = (t) => {
+    document.documentElement.dataset.theme = t;
+    box.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
+    try { localStorage.setItem('mk-chart-theme', t); } catch (e) {}
+  };
+  let saved = 'mono';
+  try { saved = localStorage.getItem('mk-chart-theme') || 'mono'; } catch (e) {}
+  box.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) set(b.dataset.t); });
+  set(saved);
+})();
+
+const TAU = Math.PI * 2;
+// Angles start at 12 o'clock and run clockwise.
+const polar = (r, a) => [r * Math.sin(a), -r * Math.cos(a)];
+const P = (r, a) => polar(r, a).map((v) => Math.round(v * 100) / 100).join(' ');
+const sector = (r0, r1, a0, a1) => {
+  a1 = Math.min(a1, a0 + TAU - 1e-4);
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  if (a1 - a0 < 1e-4) return '';
+  if (r0 <= 0) return `M0 0L${P(r1, a0)}A${r1} ${r1} 0 ${large} 1 ${P(r1, a1)}Z`;
+  return `M${P(r1, a0)}A${r1} ${r1} 0 ${large} 1 ${P(r1, a1)}L${P(r0, a1)}A${r0} ${r0} 0 ${large} 0 ${P(r0, a0)}Z`;
+};
+const arc = (r, a0, a1) => {
+  a1 = Math.min(a1, a0 + TAU - 1e-4);
+  if (a1 - a0 < 1e-4) return `M${P(r, a0)}`;
+  return `M${P(r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${P(r, a1)}`;
+};
+
+// Rolling digits: each digit is a 0–9 column that slides to its value.
+const flow = (node, format) => {
+  node.classList.add('flow');
+  node.setAttribute('role', 'img');
+  let chars = [];
+  return (value) => {
+    const s = format(value);
+    if (s.replace(/\d/g, '0') !== chars.map((c) => c.mask).join('')) {
+      node.textContent = '';
+      chars = [...s].map((ch) => {
+        if (!/\d/.test(ch)) { node.append(ch); return { mask: ch }; }
+        const col = document.createElement('span');
+        col.className = 'flow__col';
+        col.innerHTML = '<span>0<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9</span>';
+        node.append(col);
+        return { mask: '0', strip: col.firstChild };
+      });
+    }
+    node.setAttribute('aria-label', s);
+    [...s].forEach((ch, i) => { if (chars[i].strip) chars[i].strip.style.transform = `translateY(${-Number(ch) * 10}%)`; });
+  };
+};
+const MAX = 600000, COUNT = 44, A0 = -Math.PI * .75, A1 = Math.PI * .75, R0 = 108, R1 = 150;
+const g = document.querySelector('[data-notches]');
+const notches = Array.from({ length: COUNT }, () => el('line', { class: 'notch' }, g));
+const setValue = flow(document.querySelector('[data-value]'), (v) => '$' + fmt(Math.round(v / 1000) * 1000));
+const pct = document.querySelector('[data-pct]');
+const range = document.querySelector('[data-range]');
+const lit = new Array(COUNT).fill(0);
+let shown = 0, raf = 0, target = 0, run = 0;
+
+// Each notch eases toward lit/unlit on its own, so a change ripples along the arc.
+function frame() {
+  let moving = false;
+  const on = Math.round(target / MAX * COUNT);
+  notches.forEach((n, i) => {
+    const goal = i < on ? 1 : 0;
+    const d = goal - lit[i];
+    if (Math.abs(d) > .002) { moving = true; lit[i] += d * (reduce ? 1 : .16); } else lit[i] = goal;
+    const a = lerp(A0, A1, (i + .5) / COUNT);
+    const [x0, y0] = polar(R0, a), [x1, y1] = polar(R1 + lit[i] * 8, a);
+    n.setAttribute('x1', x0.toFixed(2)); n.setAttribute('y1', y0.toFixed(2)); n.setAttribute('x2', x1.toFixed(2)); n.setAttribute('y2', y1.toFixed(2));
+    n.setAttribute('stroke', lit[i] > .5 ? `color-mix(in oklab, var(--c4), var(--c1) ${Math.round(i / COUNT * 100)}%)` : 'rgba(255,255,255,.07)');
+  });
+  raf = moving ? requestAnimationFrame(frame) : 0;
+}
+// Notches light one at a time so a jump reads as a sweep.
+function set(v) {
+  const from = shown, id = ++run;
+  tween(900, (t) => { if (id !== run) return; shown = lerp(from, v, t); target = shown; if (!raf) raf = requestAnimationFrame(frame); }, easeOut);
+  setValue(v);
+  pct.textContent = `${Math.round(v / MAX * 100)}% of $600K target`;
+}
+range.addEventListener('input', () => { set(+range.value); document.querySelectorAll('[data-presets] button').forEach((n) => n.setAttribute('aria-pressed', 'false')); });
+document.querySelector('[data-presets]').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  e.currentTarget.querySelectorAll('button').forEach((n) => n.setAttribute('aria-pressed', String(n === b)));
+  range.value = b.dataset.v;
+  set(+b.dataset.v);
+});
+
+frame();
+whenVisible(g, () => set(+range.value));
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Footer reveal</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { background: #000; color: var(--text); font: 16px/1.6 system-ui, -apple-system, sans-serif; }
+main section { max-width: 680px; margin: 0 auto; padding: 14vh 20px; display: grid; gap: 14px; }
+main p { color: var(--muted); }
+</style>
+<style id="effect">
+.reveal-main { position: relative; z-index: 1; background: var(--bg); border-radius: 0 0 28px 28px; box-shadow: 0 30px 60px rgba(0, 0, 0, .6); }
+.reveal-footer {
+  position: fixed; inset: auto 0 0; z-index: 0; height: var(--fh, 60vh); display: grid; align-content: end; gap: 12px; padding: 6vh 6vw;
+  background: var(--accent); color: #111; opacity: calc(.15 + var(--p, 0) * .85); transform: translateY(calc((1 - var(--p, 0)) * 12%));
+}
+.reveal-footer h2 { font: 900 clamp(40px, 9vw, 120px)/.9 system-ui, sans-serif; letter-spacing: -.03em; }
+.reveal-spacer { height: var(--fh, 60vh); }
+</style>
+</head>
+<body>
+<main class="reveal-main">
+  <section><h1>Scroll to the bottom</h1><p>The footer sits fixed behind the page. As the last section scrolls away it is uncovered, fading and lifting into place.</p></section>
+  <section><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum vestibulum.</p><p>Cras venenatis euismod malesuada. Nullam ac erat ante.</p></section>
+  <section><p>Phasellus euismod, justo at tincidunt laoreet, augue lorem ultrices sapien, nec bibendum ipsum.</p></section>
+</main>
+<div class="reveal-spacer" aria-hidden="true"></div>
+<footer class="reveal-footer" data-reveal-footer><h2>Let's talk.</h2><p>hello@example.com · +1 555 010 0000</p></footer>
+<script>
+const footer = document.querySelector('[data-reveal-footer]');
+const update = () => {
+  const fh = footer.offsetHeight;
+  const left = document.documentElement.scrollHeight - innerHeight - scrollY;
+  footer.style.setProperty('--p', Math.min(1, Math.max(0, 1 - left / fh)).toFixed(3));
+};
+addEventListener('scroll', update, { passive: true });
+addEventListener('resize', update);
+update();
+</script>
+</body>
+</html>

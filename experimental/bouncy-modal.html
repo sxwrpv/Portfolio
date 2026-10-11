@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Playful game-style modal</title>
+<style id="page">
+:root { color-scheme: light; --bg: #bfe6ff; --ink: #1f2a44; --accent: #ffb703; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; background: radial-gradient(circle at 50% 30%, #e6f6ff, var(--bg)); color: var(--ink); font: 16px/1.5 ui-rounded, "SF Pro Rounded", system-ui, sans-serif; }
+.open { padding: 16px 28px; border: 0; border-radius: 18px; background: var(--accent); color: var(--ink); font: 800 20px/1 inherit; box-shadow: 0 6px 0 #c98a00; cursor: pointer; }
+.open:active { transform: translateY(4px); box-shadow: 0 2px 0 #c98a00; }
+</style>
+<style id="effect">
+.gm { width: min(360px, 90vw); padding: 0; border: 0; border-radius: 28px; background: #fff; color: var(--ink); box-shadow: 0 10px 0 #9ec9e6, 0 30px 60px rgba(31, 42, 68, .3); overflow: visible; }
+.gm::backdrop { background: rgba(31, 42, 68, .35); }
+.gm[open] { animation: gm-pop .7s cubic-bezier(.2, 1.8, .4, 1); }
+.gm.is-closing { animation: gm-out .25s ease-in forwards; }
+@keyframes gm-pop { 0% { transform: scale(.2) rotate(-8deg); opacity: 0; } 60% { transform: scale(1.06) rotate(2deg); opacity: 1; } 100% { transform: none; } }
+@keyframes gm-out { to { transform: scale(.6) translateY(30px); opacity: 0; } }
+.gm__head { margin: -26px auto 0; width: max-content; padding: 10px 22px; border-radius: 16px; background: #ff6b6b; color: #fff; font: 900 20px/1 inherit; box-shadow: 0 5px 0 #c94b4b; transform: rotate(-3deg); }
+.gm__body { padding: 22px 26px 26px; display: grid; gap: 14px; justify-items: center; text-align: center; }
+.gm__stars { display: flex; gap: 6px; font-size: 40px; }
+.gm__stars span { display: inline-block; opacity: 0; transform: scale(0) rotate(-90deg); }
+.gm[open] .gm__stars span { animation: gm-star .6s cubic-bezier(.2, 1.8, .4, 1) forwards; animation-delay: calc(300ms + var(--i) * 140ms); }
+@keyframes gm-star { to { opacity: 1; transform: none; } }
+.gm__ok { padding: 12px 34px; border: 0; border-radius: 14px; background: #4cc96f; color: #fff; font: 800 18px/1 inherit; box-shadow: 0 5px 0 #2f9a4f; cursor: pointer; }
+.gm__ok:active { transform: translateY(3px); box-shadow: 0 2px 0 #2f9a4f; }
+@media (prefers-reduced-motion: reduce) { .gm[open], .gm.is-closing, .gm[open] .gm__stars span { animation: none; opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<button class="open" type="button" data-open>Finish level</button>
+<dialog class="gm" data-gm aria-labelledby="gm-title">
+  <div class="gm__head" id="gm-title">Level complete!</div>
+  <div class="gm__body"><div class="gm__stars" aria-label="3 stars"><span style="--i:0">⭐</span><span style="--i:1">⭐</span><span style="--i:2">⭐</span></div><p>You outran the comet in record time.</p><button class="gm__ok" type="button" data-ok>Continue</button></div>
+</dialog>
+<script>
+const gm = document.querySelector('[data-gm]');
+const close = () => { gm.classList.add('is-closing'); setTimeout(() => { gm.classList.remove('is-closing'); gm.close(); }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250); };
+document.querySelector('[data-open]').addEventListener('click', () => gm.showModal());
+document.querySelector('[data-ok]').addEventListener('click', close);
+gm.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Magnetic cursor and buttons</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 46px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; cursor: none; }
+.toolbar { display: flex; gap: 6px; padding: 6px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+.toolbar button { width: 48px; height: 48px; border: 0; border-radius: 12px; background: transparent; color: var(--text); font-size: 20px; cursor: none; }
+.mag-row { display: flex; gap: 30px; }
+.mag-row a { display: inline-grid; place-items: center; width: 120px; height: 120px; border-radius: 50%; background: var(--accent); color: #111; font-weight: 800; text-decoration: none; cursor: none; }
+.mag-row a:nth-child(2) { background: var(--text); }
+p { color: var(--muted); }
+</style>
+<style id="effect">
+.pointer {
+  position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; width: 20px; height: 20px; border-radius: 10px;
+  background: rgba(255, 255, 255, .28); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  transform: translate3d(var(--x), var(--y), 0); width: var(--w); height: var(--h); border-radius: var(--r);
+}
+[data-magnet] { transition: transform .5s cubic-bezier(.2, .9, .3, 1.2); }
+[data-magnet].is-pulled { transition: transform .12s linear; }
+@media (hover: none) { .pointer { display: none; } body, button, a { cursor: auto !important; } }
+</style>
+</head>
+<body>
+<div class="toolbar" role="toolbar" aria-label="Formatting">
+  <button type="button" data-snap aria-label="Bold"><b>B</b></button>
+  <button type="button" data-snap aria-label="Italic"><i>I</i></button>
+  <button type="button" data-snap aria-label="Underline"><u>U</u></button>
+  <button type="button" data-snap aria-label="Link">🔗</button>
+</div>
+<div class="mag-row">
+  <a href="#" data-magnet data-snap>Say hello</a>
+  <a href="#" data-magnet data-snap>Call</a>
+</div>
+<p>The pointer snaps onto targets like iPad OS; the round buttons also pull toward it.</p>
+<div class="pointer" data-pointer aria-hidden="true"></div>
+<script>
+const ptr = document.querySelector('[data-pointer]');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const mouse = { x: innerWidth / 2, y: innerHeight / 2 };
+let snapEl = null;
+const s = { x: mouse.x, y: mouse.y, w: 20, h: 20, r: 10, v: [0, 0, 0, 0, 0] };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+document.querySelectorAll('[data-snap]').forEach((el) => {
+  el.addEventListener('pointerenter', () => { snapEl = el; });
+  el.addEventListener('pointerleave', () => { if (snapEl === el) snapEl = null; });
+});
+document.querySelectorAll('[data-magnet]').forEach((el) => {
+  el.addEventListener('pointermove', (e) => {
+    if (reduce) return;
+    const r = el.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2);
+    const dy = e.clientY - (r.top + r.height / 2);
+    el.classList.add('is-pulled');
+    el.style.transform = `translate(${dx * .35}px, ${dy * .35}px)`;
+  });
+  el.addEventListener('pointerleave', () => { el.classList.remove('is-pulled'); el.style.transform = ''; });
+});
+const step = (key, i, target, k = 380, c = 32) => {
+  s.v[i] += (-k * (s[key] - target) - c * s.v[i]) / 60;
+  s[key] += s.v[i] / 60;
+};
+const frame = () => {
+  let tx = mouse.x - 10, ty = mouse.y - 10, tw = 20, th = 20, tr = 10;
+  if (snapEl) {
+    const r = snapEl.getBoundingClientRect();
+    const pad = 4;
+    const cs = getComputedStyle(snapEl);
+    tw = r.width + pad * 2; th = r.height + pad * 2;
+    tr = parseFloat(cs.borderTopLeftRadius) + pad;
+    tx = r.left - pad + (mouse.x - (r.left + r.width / 2)) * .12;
+    ty = r.top - pad + (mouse.y - (r.top + r.height / 2)) * .12;
+  }
+  if (reduce) Object.assign(s, { x: tx, y: ty, w: tw, h: th, r: tr });
+  else { step('x', 0, tx, 900, 60); step('y', 1, ty, 900, 60); step('w', 2, tw); step('h', 3, th); step('r', 4, tr); }
+  ptr.style.setProperty('--x', `${s.x}px`);
+  ptr.style.setProperty('--y', `${s.y}px`);
+  ptr.style.setProperty('--w', `${Math.max(4, s.w)}px`);
+  ptr.style.setProperty('--h', `${Math.max(4, s.h)}px`);
+  ptr.style.setProperty('--r', `${Math.max(0, s.r)}px`);
+  requestAnimationFrame(frame);
+};
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

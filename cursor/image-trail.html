@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Image trail</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; overflow: hidden; display: grid; place-content: center; justify-items: center; gap: 14px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+h1 { position: relative; z-index: 2; font: 900 clamp(44px, 9vw, 120px)/1 system-ui, sans-serif; letter-spacing: -.03em; mix-blend-mode: difference; pointer-events: none; }
+.tabs { position: relative; z-index: 3; display: flex; gap: 8px; }
+.tabs button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+</style>
+<style id="effect">
+.trail-img { position: fixed; left: 0; top: 0; z-index: 1; width: 170px; height: 210px; margin: -105px 0 0 -85px; border-radius: 12px; pointer-events: none; will-change: transform, opacity; box-shadow: 0 20px 40px rgba(0, 0, 0, .4); }
+</style>
+</head>
+<body>
+<h1>Move around</h1>
+<div class="tabs" role="group" aria-label="Mode">
+  <button type="button" data-mode="trail" aria-pressed="true">Trail</button>
+  <button type="button" data-mode="velocity" aria-pressed="false">Velocity throw</button>
+</div>
+<script>
+const COLORS = [['#ffb36b', '#a8324a'], ['#7ad0ff', '#273c8f'], ['#c9f27a', '#2a6b3a'], ['#e3a8ff', '#4b2a8f'], ['#ffe27a', '#8f5a1a'], ['#7affd8', '#1a6b5a']];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let mode = 'trail';
+let last = null, n = 0, lastT = 0;
+const GAP = 90;
+addEventListener('pointermove', (e) => {
+  if (reduce) return;
+  const now = performance.now();
+  if (!last) { last = { x: e.clientX, y: e.clientY }; lastT = now; return; }
+  const dx = e.clientX - last.x, dy = e.clientY - last.y;
+  if (Math.hypot(dx, dy) < GAP) return;
+  const dt = Math.max(16, now - lastT);
+  spawn(e.clientX, e.clientY, dx / dt, dy / dt);
+  last = { x: e.clientX, y: e.clientY };
+  lastT = now;
+});
+function spawn(x, y, vx, vy) {
+  const el = document.createElement('div');
+  el.className = 'trail-img';
+  el.setAttribute('aria-hidden', 'true');
+  const [a, b] = COLORS[n++ % COLORS.length];
+  el.style.background = `linear-gradient(150deg, ${a}, ${b})`;
+  el.style.zIndex = n;
+  document.body.append(el);
+  const rot = (Math.random() - .5) * 16;
+  let anim;
+  if (mode === 'trail') {
+    anim = el.animate([
+      { transform: `translate(${x}px, ${y}px) scale(.4) rotate(${rot}deg)`, opacity: 0 },
+      { transform: `translate(${x}px, ${y}px) scale(1) rotate(${rot}deg)`, opacity: 1, offset: .15 },
+      { transform: `translate(${x}px, ${y}px) scale(1) rotate(${rot}deg)`, opacity: 1, offset: .7 },
+      { transform: `translate(${x}px, ${y + 40}px) scale(.85) rotate(${rot}deg)`, opacity: 0 },
+    ], { duration: 1200, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+  } else {
+    const tx = x + vx * 260, ty = y + vy * 260;
+    anim = el.animate([
+      { transform: `translate(${x}px, ${y}px) scale(.5) rotate(${rot}deg)`, opacity: 1 },
+      { transform: `translate(${tx}px, ${ty}px) scale(1) rotate(${rot + vx * 30}deg)`, opacity: 1, offset: .6 },
+      { transform: `translate(${tx}px, ${ty + 30}px) scale(.9) rotate(${rot + vx * 30}deg)`, opacity: 0 },
+    ], { duration: 1300, easing: 'cubic-bezier(.15, .85, .25, 1)' });
+  }
+  anim.onfinish = () => el.remove();
+}
+document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => {
+  mode = b.dataset.mode;
+  document.querySelectorAll('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+}));
+</script>
+</body>
+</html>

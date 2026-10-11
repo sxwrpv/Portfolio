@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Cursor with custom content</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 26px; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(140px, 220px)); gap: 14px; }
+.tile { aspect-ratio: 4 / 5; border-radius: 16px; }
+.target { width: 180px; height: 180px; border-radius: 50%; border: 1px dashed var(--line); display: grid; place-items: center; color: var(--muted); }
+p { color: var(--muted); }
+</style>
+<style id="effect">
+.cc { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; transform: translate3d(var(--x, -100px), var(--y, -100px), 0); }
+.cc__bubble {
+  position: absolute; left: 0; top: 0; translate: -50% -50%; min-width: 12px; height: 12px; border-radius: 999px; background: var(--text); color: var(--bg);
+  display: grid; place-items: center; overflow: hidden; font: 700 13px/1 system-ui, sans-serif; white-space: nowrap;
+  transition: min-width .35s cubic-bezier(.2, .9, .3, 1.2), height .35s cubic-bezier(.2, .9, .3, 1.2), padding .35s, background-color .25s;
+}
+.cc__bubble span { opacity: 0; transition: opacity .15s; }
+.cc.has-label .cc__bubble { min-width: 76px; height: 76px; padding: 0 12px; background: var(--accent); color: #111; }
+.cc.has-label .cc__bubble span { opacity: 1; transition-delay: .1s; }
+.cc__ring { position: absolute; left: 0; top: 0; width: 150px; height: 150px; translate: -50% -50%; opacity: 0; scale: .6; transition: opacity .3s, scale .4s cubic-bezier(.2, .9, .3, 1.2); }
+.cc__ring svg { width: 100%; height: 100%; animation: cc-spin 8s linear infinite; }
+.cc__ring text { fill: var(--text); font: 700 11px/1 system-ui, sans-serif; letter-spacing: 3px; text-transform: uppercase; }
+.cc.is-orbit .cc__ring { opacity: 1; scale: 1; }
+.cc.is-orbit .cc__bubble { min-width: 46px; height: 46px; background: var(--accent); }
+@keyframes cc-spin { to { rotate: 360deg; } }
+@media (hover: none) { .cc { display: none; } }
+@media (prefers-reduced-motion: reduce) { .cc__ring svg { animation: none; } }
+</style>
+</head>
+<body>
+<div class="grid">
+  <div class="tile" data-cursor="View" style="background:linear-gradient(135deg,#ff9a5a,#8a2c4a)"></div>
+  <div class="tile" data-cursor="Drag ↔" style="background:linear-gradient(135deg,#7ad0ff,#2a3c8f)"></div>
+  <div class="tile" data-cursor="▶ Play" style="background:linear-gradient(135deg,#c9f27a,#2f6b3a)"></div>
+</div>
+<div class="target" data-cursor-orbit>Floating target</div>
+<p>Hover the tiles and the circle</p>
+<div class="cc" data-cc aria-hidden="true">
+  <div class="cc__ring"><svg viewBox="0 0 150 150"><defs><path id="cc-circle" d="M75 75m-58 0a58 58 0 1 1 116 0a58 58 0 1 1-116 0"/></defs><text><textPath href="#cc-circle">Let's work together · Let's work together · </textPath></text></svg></div>
+  <div class="cc__bubble"><span data-cc-label></span></div>
+</div>
+<script>
+const cc = document.querySelector('[data-cc]');
+const label = cc.querySelector('[data-cc-label]');
+const p = { x: -100, y: -100 }, s = { x: -100, y: -100, vx: 0, vy: 0 };
+let orbitEl = null;
+addEventListener('pointermove', (e) => { p.x = e.clientX; p.y = e.clientY; });
+document.querySelectorAll('[data-cursor]').forEach((el) => {
+  el.addEventListener('pointerenter', () => { label.textContent = el.dataset.cursor; cc.classList.add('has-label'); });
+  el.addEventListener('pointerleave', () => cc.classList.remove('has-label'));
+});
+const orbit = document.querySelector('[data-cursor-orbit]');
+orbit.addEventListener('pointerenter', () => { orbitEl = orbit; cc.classList.add('is-orbit'); });
+orbit.addEventListener('pointerleave', () => { orbitEl = null; cc.classList.remove('is-orbit'); });
+const frame = () => {
+  let tx = p.x, ty = p.y;
+  if (orbitEl) {
+    const r = orbitEl.getBoundingClientRect();
+    tx = r.left + r.width / 2 + (p.x - (r.left + r.width / 2)) * .25;
+    ty = r.top + r.height / 2 + (p.y - (r.top + r.height / 2)) * .25;
+  }
+  s.vx += (-500 * (s.x - tx) - 40 * s.vx) / 60; s.x += s.vx / 60;
+  s.vy += (-500 * (s.y - ty) - 40 * s.vy) / 60; s.y += s.vy / 60;
+  cc.style.setProperty('--x', `${s.x}px`);
+  cc.style.setProperty('--y', `${s.y}px`);
+  requestAnimationFrame(frame);
+};
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

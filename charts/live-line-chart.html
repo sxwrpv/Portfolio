@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Live line chart</title>
+<style id="page">
+:root {
+  color-scheme: dark;
+  --bg: #070708; --panel: #0f0f11; --line: rgba(255, 255, 255, .08); --grid: rgba(255, 255, 255, .07);
+  --text: #f4f4f5; --muted: #a1a1aa; --dim: #71717a;
+  --c1: #f4f4f5; --c2: #a1a1aa; --c3: #71717a; --c4: #52525b; --c5: #3f3f46;
+  --s0: #1c1c1f; --s1: #3f3f46; --s2: #52525b; --s3: #71717a; --s4: #a1a1aa; --s5: #f4f4f5;
+  --up: #22c55e; --down: #ef4444;
+  --ease: cubic-bezier(.85, 0, .15, 1); --out: cubic-bezier(.16, 1, .3, 1);
+}
+[data-theme="lagoon"] { --c1: #67e8f9; --c2: #22d3ee; --c3: #06b6d4; --c4: #0891b2; --c5: #0e7490; --s1: #083344; --s2: #155e75; --s3: #0891b2; --s4: #22d3ee; --s5: #67e8f9; }
+[data-theme="warm"] { --c1: #fcd34d; --c2: #fbbf24; --c3: #f59e0b; --c4: #d97706; --c5: #b45309; --s1: #451a03; --s2: #92400e; --s3: #d97706; --s4: #fbbf24; --s5: #fcd34d; }
+[data-theme="forest"] { --c1: #5eead4; --c2: #2dd4bf; --c3: #14b8a6; --c4: #0d9488; --c5: #0f766e; --s1: #042f2e; --s2: #115e59; --s3: #0d9488; --s4: #2dd4bf; --s5: #5eead4; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; padding: 24px 16px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+.card { width: min(92vw, 880px); padding: 22px 22px 18px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.head h1 { font: 650 15px/1.3 system-ui, sans-serif; letter-spacing: -.01em; }
+.head p { margin-top: 4px; color: var(--muted); font-size: 13px; }
+.themes { display: flex; gap: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 99px; flex: none; }
+.themes button { width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; background: var(--sw); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15); transition: transform .3s var(--out), box-shadow .3s; }
+.themes button:hover { transform: scale(1.15); }
+.themes button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 3.5px var(--text); }
+.note { margin-top: 14px; color: var(--dim); font-size: 12px; }
+.tip { position: fixed; left: 0; top: 0; z-index: 10; min-width: 120px; padding: 8px 10px; border-radius: 10px; background: rgba(24, 24, 27, .92); border: 1px solid rgba(255, 255, 255, .1); box-shadow: 0 12px 32px rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font-size: 12px; pointer-events: none; opacity: 0; transform: translate(var(--tx, 0), var(--ty, 0)) scale(.96); transition: opacity .15s, transform .25s var(--out); font-variant-numeric: tabular-nums; }
+.tip.on { opacity: 1; transform: translate(var(--tx, 0), var(--ty, 0)); }
+.tip b { display: block; margin-bottom: 4px; font-weight: 600; }
+.tip .row { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.tip .row i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
+.tip .row span { margin-left: auto; padding-left: 12px; color: var(--text); font-weight: 600; }
+.axis text, .lbl { fill: var(--dim); font: 11px system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.gridline { stroke: var(--grid); stroke-dasharray: 3 4; }
+.toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.seg { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; }
+.seg button { padding: 5px 10px; border: 0; border-radius: 7px; background: none; color: var(--muted); font: 500 12px system-ui, sans-serif; cursor: pointer; transition: background .2s, color .2s; }
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: rgba(255, 255, 255, .09); color: var(--text); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.legend > * { display: flex; align-items: center; gap: 7px; padding: 0; border: 0; background: none; color: var(--muted); font: 500 12px system-ui, sans-serif; cursor: default; transition: opacity .25s, color .25s; }
+.legend i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); flex: none; }
+.legend .off { opacity: .35; }
+@media (max-width: 560px) { .card { padding: 16px 14px 14px; } .head { flex-direction: column; } }
+</style>
+<style id="effect">
+.flow { display: inline-flex; align-items: flex-start; line-height: 1; font-variant-numeric: tabular-nums; }
+.flow .flow__col, .flow .flow__col > span { margin: 0; padding: 0; color: inherit; font: inherit; line-height: 1; }
+.flow .flow__col { display: inline-block; height: 1em; overflow: hidden; }
+.flow .flow__col > span { display: block; transition: transform .7s cubic-bezier(.16, 1, .3, 1); }
+@media (prefers-reduced-motion: reduce) { .flow .flow__col > span { transition: none; } }
+.price { display: flex; align-items: baseline; gap: 12px; }
+.price b { font: 650 28px/1 system-ui, sans-serif; letter-spacing: -.02em; }
+.price [data-delta] { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; transition: color .3s; }
+.live { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--up); box-shadow: 0 0 0 0 var(--up); animation: live 1.6s infinite; }
+.paused .live i { background: var(--dim); animation: none; }
+@keyframes live { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.ctrl { display: flex; align-items: center; gap: 14px; }
+.ctrl button { padding: 5px 12px; border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--text); font: 500 12px system-ui, sans-serif; cursor: pointer; }
+.chart { position: relative; height: 280px; touch-action: pan-y; cursor: crosshair; }
+.chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.live-line { fill: none; stroke: var(--c1); stroke-width: 2; stroke-linejoin: round; }
+.head-dot { fill: var(--c1); }
+.head-ring { fill: none; stroke: var(--c1); }
+.cross { stroke: var(--muted); stroke-dasharray: 3 3; opacity: 0; transition: opacity .15s; }
+.cdot { fill: var(--c1); stroke: var(--panel); stroke-width: 2.5; opacity: 0; transition: opacity .15s; }
+.chart.hover .cross, .chart.hover .cdot { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .live i { animation: none; } }
+</style>
+</head>
+<body>
+<main class="card">
+  <header class="head"><div><h1>Live line chart</h1><p>A price streams in every second. The window scrolls, the axis eases to new extremes and the digits roll.</p></div><div class="themes" data-themes role="group" aria-label="Colour theme"><button type="button" data-t="mono" style="--sw:#a1a1aa" aria-label="Mono theme" title="Mono"></button><button type="button" data-t="lagoon" style="--sw:#22d3ee" aria-label="Lagoon theme" title="Lagoon"></button><button type="button" data-t="warm" style="--sw:#fbbf24" aria-label="Warm theme" title="Warm"></button><button type="button" data-t="forest" style="--sw:#2dd4bf" aria-label="Forest theme" title="Forest"></button></div></header>
+  <div class="toolbar">
+    <div class="price"><b data-price>$0.00</b><span data-delta></span></div>
+    <div class="ctrl"><span class="live"><i></i><span data-state>Live</span></span><button type="button" data-toggle>Pause</button></div>
+  </div>
+  <div class="chart" data-chart role="img" aria-label="Live streaming price chart"></div>
+  <p class="note">Hover to scrub the crosshair. Pause stops the feed without losing the trail.</p>
+</main>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs = {}, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.append(n); return n; };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const bezier = (x1, y1, x2, y2) => (t) => {
+  if (t <= 0 || t >= 1) return clamp(t, 0, 1);
+  let u = t;
+  for (let i = 0; i < 8; i++) {
+    const x = 3 * (1 - u) ** 2 * u * x1 + 3 * (1 - u) * u * u * x2 + u ** 3 - t;
+    const dx = 3 * (1 - u) ** 2 * x1 + 6 * (1 - u) * u * (x2 - x1) + 3 * u * u * (1 - x2);
+    if (Math.abs(x) < 1e-5 || !dx) break;
+    u = clamp(u - x / dx, 0, 1);
+  }
+  return 3 * (1 - u) ** 2 * u * y1 + 3 * (1 - u) * u * u * y2 + u ** 3;
+};
+const easeChart = bezier(.85, 0, .15, 1);
+const easeOut = bezier(.16, 1, .3, 1);
+const tween = (ms, fn, easing = easeChart, delay = 0) => new Promise((done) => {
+  if (reduce || ms <= 0) { fn(1); done(); return; }
+  const t0 = performance.now() + delay;
+  const step = (now) => {
+    const t = clamp((now - t0) / ms, 0, 1);
+    fn(easing(t));
+    if (t < 1) requestAnimationFrame(step); else done();
+  };
+  requestAnimationFrame(step);
+});
+const fmt = (v, o) => new Intl.NumberFormat('en-US', o).format(v);
+const compact = (v) => fmt(v, { notation: 'compact', maximumFractionDigits: 1 });
+const rng = (seed) => () => { seed |= 0; seed = seed + 0x6d2b79f5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const whenVisible = (node, fn) => new IntersectionObserver(([e], o) => { if (e.isIntersecting) { o.disconnect(); fn(); } }, { threshold: .25 }).observe(node);
+const hoverable = (node, on, off) => {
+  if (!/^(BUTTON|A|INPUT)$/.test(node.tagName)) node.tabIndex = 0;
+  node.addEventListener('pointerenter', on); node.addEventListener('pointerleave', off);
+  node.addEventListener('focus', on); node.addEventListener('blur', off);
+};
+const onResize = (node, fn) => { let w = node.clientWidth; new ResizeObserver(() => { if (node.clientWidth !== w) { w = node.clientWidth; fn(); } }).observe(node); };
+(() => {
+  const box = document.querySelector('[data-themes]');
+  const set = (t) => {
+    document.documentElement.dataset.theme = t;
+    box.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
+    try { localStorage.setItem('mk-chart-theme', t); } catch (e) {}
+  };
+  let saved = 'mono';
+  try { saved = localStorage.getItem('mk-chart-theme') || 'mono'; } catch (e) {}
+  box.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) set(b.dataset.t); });
+  set(saved);
+})();
+
+const r1 = (v) => Math.round(v * 10) / 10;
+const pt = (p) => `${r1(p[0])} ${r1(p[1])}`;
+const curves = {
+  linear: (p) => p.map((q, i) => (i ? 'L' : 'M') + pt(q)).join(''),
+  step: (p) => p.map((q, i) => (i ? `H${r1((p[i - 1][0] + q[0]) / 2)}V${r1(q[1])}H${r1(q[0])}` : 'M' + pt(q))).join(''),
+  monotone: (p) => {
+    const n = p.length;
+    if (n < 3) return curves.linear(p);
+    const dx = [], m = [], t = [];
+    for (let i = 0; i < n - 1; i++) { dx[i] = p[i + 1][0] - p[i][0]; m[i] = dx[i] ? (p[i + 1][1] - p[i][1]) / dx[i] : 0; }
+    t[0] = m[0]; t[n - 1] = m[n - 2];
+    for (let i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : 3 * (dx[i - 1] + dx[i]) / ((2 * dx[i] + dx[i - 1]) / m[i - 1] + (dx[i] + 2 * dx[i - 1]) / m[i]);
+    let d = 'M' + pt(p[0]);
+    for (let i = 0; i < n - 1; i++) { const h = dx[i] / 3; d += `C${pt([p[i][0] + h, p[i][1] + t[i] * h])} ${pt([p[i + 1][0] - h, p[i + 1][1] - t[i + 1] * h])} ${pt(p[i + 1])}`; }
+    return d;
+  },
+  catmull: (p) => {
+    let d = 'M' + pt(p[0]);
+    for (let i = 0; i < p.length - 1; i++) {
+      const a = p[i - 1] || p[i], b = p[i], c = p[i + 1], e = p[i + 2] || c;
+      d += `C${pt([b[0] + (c[0] - a[0]) / 6, b[1] + (c[1] - a[1]) / 6])} ${pt([c[0] - (e[0] - b[0]) / 6, c[1] - (e[1] - b[1]) / 6])} ${pt(c)}`;
+    }
+    return d;
+  },
+};
+const areaPath = (p, curve, base) => curves[curve](p) + `L${r1(p.at(-1)[0])} ${r1(base)}L${r1(p[0][0])} ${r1(base)}Z`;
+const linear = (d0, d1, a, b) => { const f = (v) => a + (v - d0) / (d1 - d0 || 1) * (b - a); f.inv = (p) => d0 + (p - a) / (b - a || 1) * (d1 - d0); return f; };
+const niceStep = (span, count) => { const raw = span / count, p = 10 ** Math.floor(Math.log10(raw)), e = raw / p; return (e < 1.5 ? 1 : e < 3 ? 2 : e < 7 ? 5 : 10) * p; };
+const ticks = (lo, hi, count = 4) => { const s = niceStep(hi - lo, count), out = []; for (let v = Math.ceil(lo / s) * s; v <= hi + s * 1e-6; v += s) out.push(+v.toFixed(8)); return out; };
+const niceMax = (v, count = 4) => { const s = niceStep(v, count); return Math.ceil(v / s) * s; };
+const xTicks = (n, every) => [...Array(n).keys()].filter((i) => (i % every === 0 && n - 1 - i >= every * .6) || i === n - 1);
+const day = (i, o = { month: 'short', day: 'numeric' }) => new Date(Date.UTC(2026, 0, 1 + i)).toLocaleDateString('en-US', { ...o, timeZone: 'UTC' });
+const clipReveal = (defs, id) => {
+  const rect = el('rect', { x: -6, y: -40, width: 0, height: 4000 }, el('clipPath', { id }, defs));
+  let done = false;
+  return {
+    play: (width) => tween(1100, (t) => rect.setAttribute('width', (width() + 12) * t)).then(() => { done = true; }),
+    fit: (w) => { if (done || reduce) rect.setAttribute('width', w + 12); },
+  };
+};
+// Eases a list of numbers toward a target every frame — used for crosshairs.
+const follower = (apply, k = .28) => {
+  let cur = null, target = null, raf = 0;
+  const step = () => {
+    if (!cur) { raf = 0; return; }
+    let settled = true;
+    cur = cur.map((c, i) => { const d = target[i] - c; if (Math.abs(d) > .05) settled = false; return c + d * k; });
+    apply(cur);
+    raf = settled ? 0 : requestAnimationFrame(step);
+  };
+  const go = (t) => { target = t; if (!cur || reduce) { cur = t.slice(); apply(cur); return; } if (!raf) raf = requestAnimationFrame(step); };
+  go.reset = () => { cancelAnimationFrame(raf); raf = 0; cur = null; };
+  return go;
+};
+
+const tip = (() => {
+  const node = Object.assign(document.createElement('div'), { className: 'tip' });
+  node.setAttribute('aria-hidden', 'true');
+  document.body.append(node);
+  let html = '';
+  return {
+    show(x, y, content) {
+      if (content !== html) { node.innerHTML = content; html = content; }
+      const r = node.getBoundingClientRect();
+      const tx = x + 16 + r.width > innerWidth - 8 ? x - 16 - r.width : x + 16;
+      const ty = clamp(y - r.height / 2, 8, innerHeight - r.height - 8);
+      node.style.setProperty('--tx', `${tx}px`);
+      node.style.setProperty('--ty', `${ty}px`);
+      node.classList.add('on');
+    },
+    hide() { node.classList.remove('on'); },
+  };
+})();
+const row = (color, label, value) => `<div class="row"><i style="--k:${color}"></i>${label}<span>${value}</span></div>`;
+
+// Rolling digits: each digit is a 0–9 column that slides to its value.
+const flow = (node, format) => {
+  node.classList.add('flow');
+  node.setAttribute('role', 'img');
+  let chars = [];
+  return (value) => {
+    const s = format(value);
+    if (s.replace(/\d/g, '0') !== chars.map((c) => c.mask).join('')) {
+      node.textContent = '';
+      chars = [...s].map((ch) => {
+        if (!/\d/.test(ch)) { node.append(ch); return { mask: ch }; }
+        const col = document.createElement('span');
+        col.className = 'flow__col';
+        col.innerHTML = '<span>0<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9</span>';
+        node.append(col);
+        return { mask: '0', strip: col.firstChild };
+      });
+    }
+    node.setAttribute('aria-label', s);
+    [...s].forEach((ch, i) => { if (chars[i].strip) chars[i].strip.style.transform = `translateY(${-Number(ch) * 10}%)`; });
+  };
+};
+const rand = rng(99);
+const SPAN = 30000, TICK = 1000, M = { t: 14, r: 56, b: 26, l: 4 };
+const open = 172;
+let value = open, vel = 0;
+const next = () => { vel = vel * .7 + (rand() - .49) * 2.4; value = Math.max(20, value + vel); return value; };
+const now0 = Date.now();
+const points = Array.from({ length: 32 }, (_, i) => ({ t: now0 - (31 - i) * TICK, v: next() }));
+const wrap = document.querySelector('[data-chart]');
+const svg = el('svg', {}, wrap);
+const defs = el('defs', {}, svg);
+const g = el('linearGradient', { id: 'lfill', x1: 0, x2: 0, y1: 0, y2: 1 }, defs);
+el('stop', { offset: 0, 'stop-color': 'var(--c1)', 'stop-opacity': .18 }, g);
+el('stop', { offset: 1, 'stop-color': 'var(--c1)', 'stop-opacity': 0 }, g);
+const mask = el('linearGradient', { id: 'fade', x1: 0, x2: 1, y1: 0, y2: 0 }, defs);
+el('stop', { offset: 0, 'stop-color': '#fff', 'stop-opacity': 0 }, mask);
+el('stop', { offset: .12, 'stop-color': '#fff', 'stop-opacity': 1 }, mask);
+const fadeRect = el('rect', { fill: 'url(#fade)' }, el('mask', { id: 'edge' }, defs));
+const grid = el('g', {}, svg);
+const yAxis = el('g', { class: 'axis' }, svg);
+const xAxis = el('g', { class: 'axis' }, svg);
+const body = el('g', { mask: 'url(#edge)' }, svg);
+const area = el('path', { fill: 'url(#lfill)' }, body);
+const line = el('path', { class: 'live-line' }, body);
+const ring = el('circle', { class: 'head-ring', r: 4 }, svg);
+const head = el('circle', { class: 'head-dot', r: 4 }, svg);
+const cross = el('line', { class: 'cross' }, svg);
+const cdot = el('circle', { class: 'cdot', r: 5 }, svg);
+const setPrice = flow(document.querySelector('[data-price]'), (v) => '$' + v.toFixed(2));
+const deltaEl = document.querySelector('[data-delta]');
+let W = 0, H = 0, lo = 0, hi = 0, paused = false, hoverX = null, clock = Date.now(), lastWall = performance.now(), lastFrame = lastWall;
+// The clock follows wall time (minus pauses), so it keeps moving while rAF is suspended in a hidden tab.
+const syncClock = () => { const now = performance.now(); if (!paused) clock += now - lastWall; lastWall = now; };
+
+function resize() { W = wrap.clientWidth; H = wrap.clientHeight; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); fadeRect.setAttribute('width', W); fadeRect.setAttribute('height', H); }
+const time = (t) => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+function frame(nowPerf) {
+  const dt = Math.min(100, nowPerf - lastFrame);
+  lastFrame = nowPerf;
+  syncClock();
+  const x = linear(clock - SPAN, clock, M.l, W - M.r);
+  const vis = points.filter((p) => p.t >= clock - SPAN - TICK * 2);
+  const vmin = Math.min(...vis.map((p) => p.v)), vmax = Math.max(...vis.map((p) => p.v));
+  const pad = Math.max(2, (vmax - vmin) * .25);
+  const k = reduce ? 1 : 1 - Math.pow(.9, dt / 16.7);
+  lo = lo ? lerp(lo, vmin - pad, k) : vmin - pad;
+  hi = hi ? lerp(hi, vmax + pad, k) : vmax + pad;
+  const y = linear(lo, hi, H - M.b, M.t);
+  // The newest point slides in from the last one so the head moves continuously.
+  const last = points.at(-1), prev = points.at(-2);
+  const age = reduce ? 1 : clamp((clock - last.t) / 450, 0, 1), e = easeOut(age);
+  const headPt = [x(lerp(prev.t, last.t, e)), y(lerp(prev.v, last.v, e))];
+  const pts = vis.slice(0, -1).map((p) => [x(p.t), y(p.v)]);
+  if (headPt[0] - pts.at(-1)[0] > .5) pts.push(headPt);
+  line.setAttribute('d', curves.monotone(pts));
+  area.setAttribute('d', areaPath(pts, 'monotone', H - M.b));
+  head.setAttribute('cx', headPt[0]); head.setAttribute('cy', headPt[1]);
+  ring.setAttribute('cx', headPt[0]); ring.setAttribute('cy', headPt[1]);
+  const pulse = paused || reduce ? 0 : (clock % 1600) / 1600;
+  ring.setAttribute('r', 4 + pulse * 12); ring.setAttribute('opacity', (1 - pulse) * .6);
+  const tk = ticks(lo, hi, 4);
+  grid.replaceChildren(...tk.map((v) => el('line', { class: 'gridline', x1: M.l, x2: W - M.r, y1: r1(y(v)), y2: r1(y(v)) })));
+  yAxis.replaceChildren(...tk.map((v) => { const t = el('text', { x: W - M.r + 10, y: r1(y(v)) + 4 }); t.textContent = '$' + v; return t; }));
+  const marks = [];
+  for (let t = Math.ceil((clock - SPAN) / 7500) * 7500; t <= clock; t += 7500) marks.push(t);
+  xAxis.replaceChildren(...marks.map((t) => { const n = el('text', { x: r1(x(t)), y: H - 7, 'text-anchor': 'middle', opacity: clamp((x(t) - M.l) / 50, 0, 1) }); n.textContent = time(t); return n; }));
+  if (hoverX !== null) scrub(x, y, vis);
+  if (!reduce) requestAnimationFrame(frame);
+}
+function scrub(x, y, vis) {
+  const t = x.inv(hoverX);
+  const p = vis.reduce((a, b) => (Math.abs(b.t - t) < Math.abs(a.t - t) ? b : a));
+  const px = x(p.t), py = y(p.v);
+  cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.setAttribute('y1', M.t); cross.setAttribute('y2', H - M.b);
+  cdot.setAttribute('cx', px); cdot.setAttribute('cy', py);
+  tip.show(wrap.getBoundingClientRect().left + px, wrap.getBoundingClientRect().top + py, `<b>${time(p.t)}</b>${row('var(--c1)', 'Price', '$' + p.v.toFixed(2))}`);
+}
+function push() {
+  syncClock();
+  if (paused) return;
+  points.push({ t: clock, v: next() });
+  if (points.length > 80) points.shift();
+  setPrice(value);
+  const ch = value - open;
+  deltaEl.textContent = `${ch >= 0 ? '▲' : '▼'} ${Math.abs(ch).toFixed(2)} (${Math.abs(ch / open * 100).toFixed(2)}%)`;
+  deltaEl.style.color = ch >= 0 ? 'var(--up)' : 'var(--down)';
+  if (reduce) frame(performance.now());
+}
+
+wrap.addEventListener('pointermove', (e) => { hoverX = e.clientX - wrap.getBoundingClientRect().left; wrap.classList.add('hover'); if (reduce) frame(performance.now()); });
+wrap.addEventListener('pointerleave', () => { hoverX = null; wrap.classList.remove('hover'); tip.hide(); });
+document.querySelector('[data-toggle]').addEventListener('click', (e) => {
+  paused = !paused;
+  e.currentTarget.textContent = paused ? 'Resume' : 'Pause';
+  document.querySelector('[data-state]').textContent = paused ? 'Paused' : 'Live';
+  document.querySelector('.card').classList.toggle('paused', paused);
+});
+
+resize();
+onResize(wrap, () => { resize(); if (reduce) frame(performance.now()); });
+push();
+setInterval(push, TICK);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

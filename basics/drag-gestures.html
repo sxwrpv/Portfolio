@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Drag and gestures</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; padding: 28px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+section { position: relative; display: grid; gap: 12px; align-content: start; justify-items: center; min-height: 300px; padding: 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+h2 { justify-self: stretch; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+</style>
+<style id="effect">
+.dg { width: 80px; height: 80px; border-radius: 20px; background: var(--accent); touch-action: none; cursor: grab; will-change: transform; }
+.dg:active { cursor: grabbing; }
+.bounds { position: relative; width: 220px; height: 200px; border: 1.5px dashed var(--line); border-radius: 18px; display: grid; place-items: center; }
+.gest { width: 100px; height: 100px; border: 0; border-radius: 24px; background: #4f9dff; cursor: pointer; transition: transform .45s cubic-bezier(.2, 1.6, .3, 1), border-radius .3s; }
+.gest:hover { transform: scale(1.15) rotate(6deg); }
+.gest:active { transform: scale(.85); border-radius: 50%; transition-duration: .15s; }
+.chaser { position: absolute; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: #3ddc84; pointer-events: none; }
+</style>
+</head>
+<body>
+<section><h2>Free drag · snaps back on release</h2><div class="dg" data-drag="free"></div></section>
+<section><h2>Constraints · elastic edges</h2><div class="bounds" data-bounds><div class="dg" data-drag="bound" style="background:#b26bff"></div></div></section>
+<section><h2>Direction lock</h2><div class="dg" data-drag="lock" style="background:#ffd23f"></div><small style="color:var(--muted)">Locks to the first axis you move along</small></section>
+<section><h2>Hover and tap</h2><button class="gest" type="button" aria-label="Press me"></button></section>
+<section data-follow-zone><h2>Follow the pointer with a spring</h2><span class="chaser" data-chaser aria-hidden="true"></span></section>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function draggable(el) {
+  const mode = el.dataset.drag;
+  const bounds = mode === 'bound' ? el.closest('[data-bounds]') : null;
+  let x = 0, y = 0, start = null, lock = null, raf;
+  const set = () => { el.style.transform = `translate(${x}px, ${y}px)`; };
+  const elastic = (v, min, max) => (v < min ? min + (v - min) * .2 : v > max ? max + (v - max) * .2 : v);
+  el.addEventListener('pointerdown', (e) => { cancelAnimationFrame(raf); start = { px: e.clientX, py: e.clientY, x, y }; lock = null; el.setPointerCapture(e.pointerId); });
+  el.addEventListener('pointermove', (e) => {
+    if (!start) return;
+    let dx = e.clientX - start.px, dy = e.clientY - start.py;
+    if (mode === 'lock') { if (!lock && Math.hypot(dx, dy) > 6) lock = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'; if (lock === 'x') dy = 0; else if (lock === 'y') dx = 0; else { dx = 0; dy = 0; } }
+    x = start.x + dx; y = start.y + dy;
+    if (bounds) {
+      const maxX = (bounds.clientWidth - el.offsetWidth) / 2, maxY = (bounds.clientHeight - el.offsetHeight) / 2;
+      x = elastic(x, -maxX, maxX); y = elastic(y, -maxY, maxY);
+    }
+    set();
+  });
+  const end = () => {
+    if (!start) return;
+    start = null;
+    let tx = 0, ty = 0;
+    if (bounds) { const maxX = (bounds.clientWidth - el.offsetWidth) / 2, maxY = (bounds.clientHeight - el.offsetHeight) / 2; tx = Math.max(-maxX, Math.min(maxX, x)); ty = Math.max(-maxY, Math.min(maxY, y)); }
+    let vx = 0, vy = 0;
+    const tick = () => {
+      if (reduce) { x = tx; y = ty; set(); return; }
+      vx += (-300 * (x - tx) - 20 * vx) / 60; x += vx / 60;
+      vy += (-300 * (y - ty) - 20 * vy) / 60; y += vy / 60;
+      set();
+      if (Math.abs(x - tx) + Math.abs(y - ty) + Math.abs(vx) + Math.abs(vy) > .1) raf = requestAnimationFrame(tick); else { x = tx; y = ty; set(); }
+    };
+    raf = requestAnimationFrame(tick);
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+}
+document.querySelectorAll('[data-drag]').forEach(draggable);
+const zone = document.querySelector('[data-follow-zone]');
+const chaser = document.querySelector('[data-chaser]');
+const p = { x: 140, y: 160 }, s = { x: 140, y: 160, vx: 0, vy: 0 };
+zone.addEventListener('pointermove', (e) => { const r = zone.getBoundingClientRect(); p.x = e.clientX - r.left; p.y = e.clientY - r.top; });
+const loop = () => {
+  s.vx += (-120 * (s.x - p.x) - 12 * s.vx) / 60; s.x += s.vx / 60;
+  s.vy += (-120 * (s.y - p.y) - 12 * s.vy) / 60; s.y += s.vy / 60;
+  chaser.style.transform = `translate(${reduce ? p.x : s.x}px, ${reduce ? p.y : s.y}px)`;
+  requestAnimationFrame(loop);
+};
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

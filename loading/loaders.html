@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Loaders</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; padding: 28px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+section { display: grid; gap: 18px; place-items: center; align-content: center; min-height: 180px; padding: 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+h2 { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+</style>
+<style id="effect">
+.spin { width: 44px; height: 44px; }
+.spin circle { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 1 1; stroke-dashoffset: 0; transform-origin: 50% 50%; animation: spin-r 1.4s linear infinite, spin-d 1.4s ease-in-out infinite; }
+@keyframes spin-r { to { transform: rotate(360deg); } }
+@keyframes spin-d { 0% { stroke-dasharray: .02 1; stroke-dashoffset: 0; } 50% { stroke-dasharray: .7 1; stroke-dashoffset: -.15; } 100% { stroke-dasharray: .7 1; stroke-dashoffset: -.98; } }
+.jump { display: flex; gap: 8px; }
+.jump i { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); animation: jump .9s cubic-bezier(.3, 0, .3, 1) infinite; animation-delay: calc(var(--i) * 120ms); }
+@keyframes jump { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-14px); } }
+.pulse { display: flex; gap: 8px; }
+.pulse i { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; animation-delay: calc(var(--i) * 160ms); }
+@keyframes pulse { 0%, 100% { opacity: .25; transform: scale(.7); } 40% { opacity: 1; transform: scale(1.1); } }
+.ripple-load { position: relative; width: 60px; height: 60px; }
+.ripple-load i { position: absolute; inset: 0; border: 3px solid var(--accent); border-radius: 50%; animation: rip 1.6s cubic-bezier(.2, .6, .3, 1) infinite; animation-delay: calc(var(--i) * -.8s); }
+@keyframes rip { from { transform: scale(.1); opacity: 1; } to { transform: scale(1); opacity: 0; } }
+.bar { width: 180px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); transform-origin: 0 50%; transform: scaleX(var(--p, 0)); transition: transform .4s cubic-bezier(.2, .9, .25, 1); }
+.overlay { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: var(--bg); font: 900 clamp(40px, 8vw, 90px)/1 system-ui, sans-serif; letter-spacing: -.03em; }
+.overlay__line { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--accent); transform: scaleX(0); }
+@media (prefers-reduced-motion: reduce) { .spin circle, .jump i, .pulse i, .ripple-load i { animation-duration: 3s; } }
+</style>
+</head>
+<body>
+<section><h2>Circle spinner</h2><svg class="spin" viewBox="0 0 44 44" role="img" aria-label="Loading"><circle cx="22" cy="22" r="18" pathLength="1"/></svg></section>
+<section><h2>Jumping dots</h2><div class="jump" role="img" aria-label="Loading"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i></div></section>
+<section><h2>Pulse dots</h2><div class="pulse" role="img" aria-label="Loading"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i></div></section>
+<section><h2>Ripple</h2><div class="ripple-load" role="img" aria-label="Loading"><i style="--i:0"></i><i style="--i:1"></i></div></section>
+<section><h2>Progress bar</h2><div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" data-bar><i></i></div><button type="button" data-run-bar>Run</button></section>
+<section><h2>Line reveal overlay</h2><button type="button" data-run-overlay>Play intro</button></section>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const bar = document.querySelector('[data-bar]');
+document.querySelector('[data-run-bar]').addEventListener('click', () => {
+  let p = 0;
+  const step = () => { p = Math.min(1, p + Math.random() * .25); bar.firstElementChild.style.setProperty('--p', p); bar.setAttribute('aria-valuenow', Math.round(p * 100)); if (p < 1) setTimeout(step, 300); else setTimeout(() => bar.firstElementChild.style.setProperty('--p', 0), 900); };
+  step();
+});
+document.querySelector('[data-run-overlay]').addEventListener('click', async () => {
+  const o = document.createElement('div');
+  o.className = 'overlay';
+  o.setAttribute('aria-hidden', 'true');
+  o.innerHTML = '<span class="overlay__line"></span><span class="overlay__word">Loading</span>';
+  document.body.append(o);
+  if (reduce) { setTimeout(() => o.remove(), 600); return; }
+  const line = o.firstElementChild, word = o.lastElementChild;
+  await line.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 700, easing: 'cubic-bezier(.7, 0, .2, 1)', fill: 'forwards' }).finished;
+  word.animate([{ clipPath: 'inset(0 0 100% 0)', transform: 'translateY(20px)' }, { clipPath: 'inset(0 0 0 0)', transform: 'none' }], { duration: 500, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'forwards' });
+  await new Promise((r) => setTimeout(r, 700));
+  await o.animate([{ clipPath: 'inset(0 0 0 0)' }, { clipPath: 'inset(0 0 100% 0)' }], { duration: 650, easing: 'cubic-bezier(.7, 0, .2, 1)', fill: 'forwards' }).finished;
+  o.remove();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Dots morph button</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 14px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+small { color: var(--muted); }
+</style>
+<style id="effect">
+.dots { position: relative; width: 64px; height: 64px; border-radius: 20px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; transition: transform .15s; }
+.dots:active { transform: scale(.94); }
+.dots i { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 4px; background: var(--text); transition: transform var(--d, .5s) var(--e, ease), width var(--d, .5s) var(--e, ease), margin var(--d, .5s) var(--e, ease); }
+.dots i:nth-child(1) { transform: translate(-7px, -7px); }
+.dots i:nth-child(2) { transform: translate(7px, -7px); }
+.dots i:nth-child(3) { transform: translate(-7px, 7px); }
+.dots i:nth-child(4) { transform: translate(7px, 7px); }
+.dots[aria-expanded="true"] i { width: 26px; margin-left: -13px; }
+.dots[aria-expanded="true"] i:nth-child(1), .dots[aria-expanded="true"] i:nth-child(4) { transform: rotate(45deg); }
+.dots[aria-expanded="true"] i:nth-child(2), .dots[aria-expanded="true"] i:nth-child(3) { transform: rotate(-45deg); }
+</style>
+</head>
+<body>
+<button class="dots" type="button" aria-expanded="false" aria-label="Open menu" data-dots><i></i><i></i><i></i><i></i></button>
+<small>Click to toggle</small>
+<script>
+function spring(stiffness = 320, damping = 18, mass = 1) {
+  const w0 = Math.sqrt(stiffness / mass), z = damping / (2 * Math.sqrt(stiffness * mass)), wd = w0 * Math.sqrt(Math.max(1e-6, 1 - z * z));
+  const x = (t) => (z < 1 ? 1 - Math.exp(-z * w0 * t) * (Math.cos(wd * t) + (z * w0 / wd) * Math.sin(wd * t)) : 1 - Math.exp(-w0 * t) * (1 + w0 * t));
+  let T = .1;
+  while (T < 5 && (Math.abs(1 - x(T)) > .001 || Math.abs(1 - x(T - .05)) > .001)) T += .02;
+  const pts = Array.from({ length: 41 }, (_, i) => +x((T * i) / 40).toFixed(4));
+  pts[40] = 1;
+  return { easing: `linear(${pts.join(', ')})`, duration: Math.round(T * 1000) };
+}
+const s = spring();
+const btn = document.querySelector('[data-dots]');
+btn.style.setProperty('--e', s.easing);
+btn.style.setProperty('--d', `${s.duration}ms`);
+btn.addEventListener('click', () => {
+  const open = btn.getAttribute('aria-expanded') !== 'true';
+  btn.setAttribute('aria-expanded', String(open));
+  btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+});
+</script>
+</body>
+</html>

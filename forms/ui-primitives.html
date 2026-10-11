@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Animated UI primitives</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; padding: 28px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+section { display: grid; gap: 12px; align-content: start; padding: 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+h2 { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+</style>
+<style id="effect">
+.ck { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+.ck input { position: absolute; opacity: 0; }
+.ck__box { width: 24px; height: 24px; border-radius: 7px; border: 2px solid var(--muted); display: grid; place-items: center; transition: background-color .2s, border-color .2s, transform .3s cubic-bezier(.2, 1.6, .3, 1); }
+.ck__box svg { width: 16px; height: 16px; fill: none; stroke: #111; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.ck__box path { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .3s .05s ease-out; }
+.ck input:checked + .ck__box { background: var(--accent); border-color: var(--accent); transform: scale(1.06); }
+.ck input:checked + .ck__box path { stroke-dashoffset: 0; }
+.ck input:active + .ck__box { transform: scale(.88); }
+.ck input:focus-visible + .ck__box { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rd { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.rd input { position: absolute; opacity: 0; }
+.rd__dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); display: grid; place-items: center; transition: border-color .2s; }
+.rd__dot::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); transform: scale(0); transition: transform .35s cubic-bezier(.2, 1.8, .3, 1); }
+.rd input:checked + .rd__dot { border-color: var(--accent); }
+.rd input:checked + .rd__dot::after { transform: scale(1); }
+.rd input:focus-visible + .rd__dot { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sw { display: inline-flex; align-items: center; gap: 12px; cursor: pointer; }
+.sw input { position: absolute; opacity: 0; }
+.sw__track { position: relative; width: 52px; height: 30px; border-radius: 15px; background: var(--line); transition: background-color .25s; }
+.sw__thumb { position: absolute; left: 3px; top: 3px; width: 24px; height: 24px; border-radius: 12px; background: #fff; transition: transform .45s cubic-bezier(.2, 1.4, .3, 1), width .25s; }
+.sw input:checked + .sw__track { background: var(--accent); }
+.sw input:checked + .sw__track .sw__thumb { transform: translateX(22px); }
+.sw input:active + .sw__track .sw__thumb { width: 30px; }
+.sw input:checked:active + .sw__track .sw__thumb { transform: translateX(16px); }
+.sw input:focus-visible + .sw__track { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sel { position: relative; }
+.sel__btn { width: 100%; display: flex; justify-content: space-between; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+.sel__btn span:last-child { transition: transform .3s; }
+.sel__btn[aria-expanded="true"] span:last-child { transform: rotate(180deg); }
+.sel__list { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 5; padding: 5px; margin: 0; list-style: none; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0, 0, 0, .5); transform-origin: 50% 0; opacity: 0; transform: translateY(-6px) scale(.97); pointer-events: none; transition: opacity .18s, transform .3s cubic-bezier(.2, 1.2, .3, 1); }
+.sel__list.is-open { opacity: 1; transform: none; pointer-events: auto; }
+.sel__list li { padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.sel__list li[aria-selected="true"], .sel__list li:hover { background: var(--line); }
+.tip { position: relative; display: inline-block; }
+.tip__btn { padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+.tip__bubble { position: absolute; left: 50%; bottom: calc(100% + 10px); padding: 6px 10px; border-radius: 8px; background: var(--text); color: var(--bg); font: 600 13px/1.2 system-ui, sans-serif; white-space: nowrap; pointer-events: none; opacity: 0; transform: translateX(-50%) translateY(6px) scale(.9); transform-origin: 50% 100%; transition: opacity .15s, transform .35s cubic-bezier(.2, 1.6, .3, 1); }
+.tip__btn:hover + .tip__bubble, .tip__btn:focus-visible + .tip__bubble { opacity: 1; transform: translateX(-50%); transition-delay: .25s, .25s; }
+.prog { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.prog i { display: block; height: 100%; width: 100%; border-radius: 4px; background: var(--accent); transform-origin: 0 50%; transform: scaleX(var(--p, 0)); transition: transform .6s cubic-bezier(.2, .9, .25, 1); }
+.prog--indet i { width: 40%; animation: prog-slide 1.3s cubic-bezier(.6, 0, .4, 1) infinite; transform: none; }
+@keyframes prog-slide { from { translate: -100% 0; } to { translate: 250% 0; } }
+.tb { position: relative; display: inline-flex; gap: 2px; padding: 4px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
+.tb button { position: relative; z-index: 1; width: 40px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: 700 15px/1 system-ui, sans-serif; cursor: pointer; }
+.tb__hl { position: absolute; top: 4px; left: 0; width: 40px; height: 36px; border-radius: 8px; background: var(--line); transform: translateX(var(--x, 4px)); transition: transform .35s cubic-bezier(.2, 1.2, .3, 1); }
+@media (prefers-reduced-motion: reduce) { body * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<section><h2>Checkbox</h2>
+  <label class="ck"><input type="checkbox" checked><span class="ck__box"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" pathLength="1"/></svg></span>Remember me</label>
+  <label class="ck"><input type="checkbox"><span class="ck__box"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" pathLength="1"/></svg></span>Surprise me</label>
+</section>
+<section><h2>Radio group</h2>
+  <label class="rd"><input type="radio" name="size" checked><span class="rd__dot"></span>Espresso</label>
+  <label class="rd"><input type="radio" name="size"><span class="rd__dot"></span>Flat white</label>
+  <label class="rd"><input type="radio" name="size"><span class="rd__dot"></span>Matcha</label>
+</section>
+<section><h2>Switch</h2>
+  <label class="sw"><input type="checkbox" role="switch" checked><span class="sw__track"><span class="sw__thumb"></span></span>Notifications</label>
+  <label class="sw"><input type="checkbox" role="switch"><span class="sw__track"><span class="sw__thumb"></span></span>Dark mode</label>
+</section>
+<section><h2>Select</h2>
+  <div class="sel" data-sel>
+    <button class="sel__btn" type="button" aria-haspopup="listbox" aria-expanded="false"><span data-value>Sunrise</span><span aria-hidden="true">▾</span></button>
+    <ul class="sel__list" role="listbox" tabindex="-1"><li role="option" aria-selected="true">Sunrise</li><li role="option" aria-selected="false">Golden hour</li><li role="option" aria-selected="false">Blue hour</li><li role="option" aria-selected="false">Midnight</li></ul>
+  </div>
+</section>
+<section><h2>Tooltip</h2>
+  <div class="tip"><button class="tip__btn" type="button" aria-describedby="tip1">Hover me</button><span class="tip__bubble" role="tooltip" id="tip1">Springy tooltip</span></div>
+</section>
+<section><h2>Progress</h2>
+  <div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" data-prog><i></i></div>
+  <div class="prog prog--indet" role="progressbar" aria-label="Loading"><i></i></div>
+</section>
+<section><h2>Toolbar · roving highlight</h2>
+  <div class="tb" role="toolbar" aria-label="Text style" data-tb><span class="tb__hl" aria-hidden="true"></span><button type="button" aria-label="Bold"><b>B</b></button><button type="button" aria-label="Italic" tabindex="-1"><i>I</i></button><button type="button" aria-label="Underline" tabindex="-1"><u>U</u></button><button type="button" aria-label="Strike" tabindex="-1"><s>S</s></button></div>
+</section>
+<script>
+document.querySelectorAll('[data-sel]').forEach((sel) => {
+  const btn = sel.querySelector('.sel__btn');
+  const list = sel.querySelector('.sel__list');
+  const opts = [...list.children];
+  const value = sel.querySelector('[data-value]');
+  const set = (open) => { list.classList.toggle('is-open', open); btn.setAttribute('aria-expanded', String(open)); if (open) list.focus(); };
+  btn.addEventListener('click', () => set(!list.classList.contains('is-open')));
+  opts.forEach((o) => o.addEventListener('click', () => { opts.forEach((x) => x.setAttribute('aria-selected', String(x === o))); value.textContent = o.textContent; set(false); btn.focus(); }));
+  list.addEventListener('keydown', (e) => {
+    const i = opts.findIndex((o) => o.getAttribute('aria-selected') === 'true');
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const n = opts[(i + (e.key === 'ArrowDown' ? 1 : -1) + opts.length) % opts.length]; opts.forEach((x) => x.setAttribute('aria-selected', String(x === n))); value.textContent = n.textContent; }
+    if (e.key === 'Enter' || e.key === 'Escape') { set(false); btn.focus(); }
+  });
+  document.addEventListener('click', (e) => { if (!sel.contains(e.target)) set(false); });
+});
+const prog = document.querySelector('[data-prog]');
+let p = 0;
+setInterval(() => { p = p >= 100 ? 0 : Math.min(100, p + 10 + Math.random() * 25); prog.firstElementChild.style.setProperty('--p', p / 100); prog.setAttribute('aria-valuenow', Math.round(p)); }, 900);
+document.querySelectorAll('[data-tb]').forEach((tb) => {
+  const hl = tb.querySelector('.tb__hl');
+  const btns = [...tb.querySelectorAll('button')];
+  const move = (b) => hl.style.setProperty('--x', `${b.offsetLeft}px`);
+  btns.forEach((b, i) => {
+    b.addEventListener('pointerenter', () => move(b));
+    b.addEventListener('focus', () => move(b));
+    b.addEventListener('keydown', (e) => {
+      const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+      if (!d) return;
+      const n = btns[(i + d + btns.length) % btns.length];
+      btns.forEach((x) => { x.tabIndex = x === n ? 0 : -1; });
+      n.focus();
+    });
+  });
+  move(btns[0]);
+});
+</script>
+</body>
+</html>

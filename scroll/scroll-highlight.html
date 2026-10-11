@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Scroll highlight</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+</style>
+<style id="effect">
+.picker { position: relative; width: min(420px, 90vw); height: 360px; }
+.picker__list { height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; padding: 156px 0; scrollbar-width: none; -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); list-style: none; }
+.picker__list::-webkit-scrollbar { display: none; }
+.picker__item { height: 48px; display: grid; place-items: center; scroll-snap-align: center; font: 600 22px/1 system-ui, sans-serif; color: var(--muted); transform: scale(calc(.8 + var(--f, 0) * .3)); opacity: calc(.35 + var(--f, 0) * .65); }
+.picker__item.is-active { color: var(--text); }
+.picker__lens { position: absolute; left: 0; right: 0; top: 50%; height: 48px; margin-top: -24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); pointer-events: none; }
+.picker__out { margin-top: 18px; text-align: center; color: var(--muted); }
+.picker__out b { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="picker">
+  <ul class="picker__list" data-picker tabindex="0" aria-label="Pick a time"></ul>
+  <div class="picker__lens" aria-hidden="true"></div>
+</div>
+<p class="picker__out">Selected: <b data-out></b></p>
+<script>
+const list = document.querySelector('[data-picker]');
+const out = document.querySelector('[data-out]');
+for (let h = 7; h <= 21; h++) ['00', '30'].forEach((m) => {
+  const li = document.createElement('li');
+  li.className = 'picker__item';
+  li.textContent = `${String(h).padStart(2, '0')}:${m}`;
+  list.append(li);
+});
+const items = [...list.children];
+const update = () => {
+  const mid = list.getBoundingClientRect().top + list.clientHeight / 2;
+  let best = null, bestD = Infinity;
+  items.forEach((li) => {
+    const r = li.getBoundingClientRect();
+    const d = Math.abs(r.top + r.height / 2 - mid);
+    li.style.setProperty('--f', Math.max(0, 1 - d / 140).toFixed(3));
+    if (d < bestD) { bestD = d; best = li; }
+  });
+  items.forEach((li) => li.classList.toggle('is-active', li === best));
+  out.textContent = best.textContent;
+};
+list.addEventListener('scroll', () => requestAnimationFrame(update), { passive: true });
+list.addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  e.preventDefault();
+  list.scrollBy({ top: e.key === 'ArrowDown' ? 48 : -48, behavior: 'smooth' });
+});
+items[6].scrollIntoView({ block: 'center' });
+update();
+</script>
+</body>
+</html>

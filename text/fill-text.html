@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Fill text loader</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 22px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+button { padding: 8px 14px; border: 1px solid #2a2a2e; border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+</style>
+<style id="effect">
+.fill {
+  --p: 0;
+  position: relative; font: 900 clamp(48px, 11vw, 132px)/1 system-ui, -apple-system, sans-serif; letter-spacing: -.03em;
+  color: transparent; -webkit-text-stroke: 1.5px rgba(255, 255, 255, .35);
+}
+.fill::after {
+  content: attr(data-text); position: absolute; inset: 0; color: var(--text); -webkit-text-stroke: 0;
+  clip-path: inset(calc((1 - var(--p)) * 100%) 0 0 0);
+}
+.fill__pct { font: 600 15px/1 ui-monospace, Menlo, monospace; color: var(--muted); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="fill" data-text="LOADING" aria-hidden="true">LOADING</div>
+<div class="fill__pct" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-pct>0%</div>
+<button type="button" data-again>Restart</button>
+<script>
+const fill = document.querySelector('.fill');
+const pct = document.querySelector('[data-pct]');
+let raf;
+function run() {
+  cancelAnimationFrame(raf);
+  let p = 0;
+  let target = 0;
+  const bump = () => { target = Math.min(1, target + .08 + Math.random() * .22); if (target < 1) setTimeout(bump, 250 + Math.random() * 500); };
+  bump();
+  let last = performance.now();
+  const tick = (now = performance.now()) => {
+    const f = Math.min(3, Math.max(0, (now - last) / 16.667));
+    last = now;
+    p += (target - p) * (1 - Math.pow(.92, f));
+    if (target === 1 && 1 - p < .002) p = 1;
+    fill.style.setProperty('--p', p.toFixed(4));
+    const v = Math.round(p * 100);
+    pct.textContent = `${v}%`;
+    pct.setAttribute('aria-valuenow', v);
+    if (p < 1) raf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+document.querySelector('[data-again]').addEventListener('click', run);
+run();
+</script>
+</body>
+</html>

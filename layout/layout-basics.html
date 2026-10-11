@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Layout animation basics (FLIP)</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; padding: 28px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+section { display: grid; gap: 14px; align-content: start; padding: 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+h2 { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+button.ctl { justify-self: start; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+</style>
+<style id="effect">
+.switch-row { display: flex; height: 64px; padding: 6px; border-radius: 40px; background: var(--bg); cursor: pointer; }
+.switch-row[data-on="true"] { justify-content: flex-end; }
+.switch-row i { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); }
+.ratio-box { width: 100%; border-radius: 14px; background: linear-gradient(135deg, #7ad0ff, #2a3c8f); aspect-ratio: var(--ar, 16 / 9); }
+.reorder { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; list-style: none; padding: 0; }
+.reorder li { aspect-ratio: 1; border-radius: 12px; display: grid; place-items: center; font-weight: 800; color: #111; }
+.shared { display: flex; gap: 4px; list-style: none; padding: 0; }
+.shared li { position: relative; }
+.shared button { padding: 10px 14px; border: 0; background: transparent; color: var(--text); font: 600 15px/1 system-ui, sans-serif; cursor: pointer; }
+.shared__mark { position: absolute; left: 8px; right: 8px; bottom: -2px; height: 3px; border-radius: 2px; background: var(--accent); }
+.anchor { position: relative; height: 120px; width: var(--w, 100%); border-radius: 14px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+.anchor__child { position: absolute; width: 40px; height: 40px; border-radius: 10px; background: var(--accent); }
+.anchor__child--tl { left: 10px; top: 10px; }
+.anchor__child--br { right: 10px; bottom: 10px; background: #4f9dff; }
+.presence { position: relative; height: 90px; display: grid; place-items: center; }
+.presence span { padding: 12px 20px; border-radius: 12px; font-weight: 800; color: #111; }
+.modes { display: flex; gap: 6px; }
+.modes button { padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: 13px/1 system-ui, sans-serif; cursor: pointer; }
+.modes button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+</style>
+</head>
+<body>
+<section><h2>Layout change</h2><div class="switch-row" data-switch data-on="false" role="switch" aria-checked="false" tabindex="0" aria-label="Toggle"><i></i></div></section>
+<section><h2>Aspect ratio</h2><div class="ratio-box" data-ratio></div><button class="ctl" type="button" data-ratio-btn>Change ratio</button></section>
+<section><h2>Reorder</h2><ul class="reorder" data-reorder></ul><button class="ctl" type="button" data-shuffle>Shuffle</button></section>
+<section><h2>Shared element</h2><ul class="shared" data-shared><li><button type="button">Home</button></li><li><button type="button">Work</button></li><li><button type="button">About</button></li><li><button type="button">Contact</button></li></ul></section>
+<section><h2>Layout anchor · children keep their corners</h2><div class="anchor" data-anchor><i class="anchor__child anchor__child--tl"></i><i class="anchor__child anchor__child--br"></i></div><button class="ctl" type="button" data-anchor-btn>Resize parent</button></section>
+<section><h2>Presence modes</h2><div class="modes" role="group" aria-label="Mode"><button type="button" data-mode="sync" aria-pressed="true">sync</button><button type="button" data-mode="wait" aria-pressed="false">wait</button><button type="button" data-mode="pop" aria-pressed="false">popLayout</button></div><div class="presence" data-presence></div><button class="ctl" type="button" data-next>Next</button></section>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const EASE = 'cubic-bezier(.2, 1, .3, 1)';
+function flip(els, mutate, { duration = 550, scale = true } = {}) {
+  const first = new Map(els.map((el) => [el, el.getBoundingClientRect()]));
+  mutate();
+  if (reduce) return;
+  els.forEach((el) => {
+    const a = first.get(el), b = el.getBoundingClientRect();
+    if (!a || !b.width) return;
+    const dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+    if (!dx && !dy && sx === 1 && sy === 1) return;
+    el.animate([{ transformOrigin: '0 0', transform: `translate(${dx}px, ${dy}px)${scale ? ` scale(${sx}, ${sy})` : ''}` }, { transformOrigin: '0 0', transform: 'none' }], { duration, easing: EASE });
+  });
+}
+const sw = document.querySelector('[data-switch]');
+const toggle = () => flip([sw.firstElementChild], () => { const on = sw.dataset.on !== 'true'; sw.dataset.on = on; sw.setAttribute('aria-checked', on); });
+sw.addEventListener('click', toggle);
+sw.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); } });
+const ratio = document.querySelector('[data-ratio]');
+const RATIOS = ['16 / 9', '1 / 1', '3 / 4', '21 / 9'];
+let ri = 0;
+document.querySelector('[data-ratio-btn]').addEventListener('click', () => {
+  const from = ratio.offsetHeight;
+  ri = (ri + 1) % RATIOS.length;
+  ratio.style.setProperty('--ar', RATIOS[ri]);
+  const to = ratio.offsetHeight;
+  if (!reduce) ratio.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration: 550, easing: EASE });
+});
+const list = document.querySelector('[data-reorder]');
+for (let i = 1; i <= 8; i++) { const li = document.createElement('li'); li.textContent = i; li.style.background = `hsl(${i * 40} 80% 65%)`; list.append(li); }
+document.querySelector('[data-shuffle]').addEventListener('click', () => {
+  const items = [...list.children];
+  flip(items, () => items.sort(() => Math.random() - .5).forEach((li) => list.append(li)), { scale: false });
+});
+const shared = document.querySelector('[data-shared]');
+const mark = document.createElement('span');
+mark.className = 'shared__mark';
+shared.firstElementChild.append(mark);
+shared.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => flip([mark], () => b.parentElement.append(mark))));
+const anchor = document.querySelector('[data-anchor]');
+let wide = true;
+document.querySelector('[data-anchor-btn]').addEventListener('click', () => {
+  const kids = [...anchor.children];
+  const firstParent = anchor.getBoundingClientRect();
+  const firstKids = kids.map((k) => k.getBoundingClientRect());
+  wide = !wide;
+  anchor.style.setProperty('--w', wide ? '100%' : '55%');
+  if (reduce) return;
+  const p = anchor.getBoundingClientRect();
+  anchor.animate([{ width: `${firstParent.width}px` }, { width: `${p.width}px` }], { duration: 550, easing: EASE });
+  kids.forEach((k, i) => {
+    const now = k.getBoundingClientRect();
+    const dx = firstKids[i].left - now.left;
+    k.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration: 550, easing: EASE });
+  });
+});
+const pres = document.querySelector('[data-presence]');
+let mode = 'sync', n = 0;
+const make = () => { const s = document.createElement('span'); s.textContent = `Item ${++n}`; s.style.background = `hsl(${n * 70} 80% 65%)`; return s; };
+pres.append(make());
+document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode; document.querySelectorAll('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); }));
+document.querySelector('[data-next]').addEventListener('click', async () => {
+  const old = pres.lastElementChild;
+  const next = make();
+  const exit = () => old.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-20px) scale(.9)' }], { duration: reduce ? 0 : 300, easing: 'ease-in', fill: 'forwards' }).finished.then(() => old.remove());
+  const enter = () => next.animate([{ opacity: 0, transform: 'translateY(20px) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: reduce ? 0 : 400, easing: EASE });
+  if (mode === 'wait') { await exit(); pres.append(next); enter(); }
+  else if (mode === 'pop') { const r = old.getBoundingClientRect(), pr = pres.getBoundingClientRect(); Object.assign(old.style, { position: 'absolute', left: `${r.left - pr.left}px`, top: `${r.top - pr.top}px` }); pres.append(next); exit(); enter(); }
+  else { pres.style.gridTemplateAreas = '"a"'; old.style.gridArea = 'a'; next.style.gridArea = 'a'; pres.append(next); exit(); enter(); }
+});
+</script>
+</body>
+</html>

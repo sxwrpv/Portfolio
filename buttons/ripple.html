@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Press ripple</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --accent: #4f9dff; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; gap: 18px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.row { display: flex; gap: 14px; }
+.card-btn { width: 300px; height: 140px; border-radius: 18px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 700 18px/1 system-ui, sans-serif; }
+</style>
+<style id="effect">
+[data-ripple] { position: relative; overflow: hidden; isolation: isolate; cursor: pointer; }
+.ripple { position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; background: currentColor; opacity: .22; transform: scale(0); }
+.btn-r { padding: 14px 24px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font: 700 16px/1 system-ui, sans-serif; }
+.btn-r--ghost { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+</style>
+</head>
+<body>
+<div class="row"><button class="btn-r" type="button" data-ripple>Primary</button><button class="btn-r btn-r--ghost" type="button" data-ripple>Outlined</button></div>
+<button class="card-btn" type="button" data-ripple>Click anywhere on this card</button>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.querySelectorAll('[data-ripple]').forEach((el) => {
+  el.addEventListener('pointerdown', (e) => {
+    if (reduce) return;
+    const r = el.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    const size = Math.hypot(Math.max(x, r.width - x), Math.max(y, r.height - y)) * 2;
+    const dot = document.createElement('span');
+    dot.className = 'ripple';
+    Object.assign(dot.style, { width: `${size}px`, height: `${size}px`, left: `${x - size / 2}px`, top: `${y - size / 2}px` });
+    el.append(dot);
+    const grow = dot.animate([{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { duration: 550, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'forwards' });
+    const fade = () => dot.animate([{ opacity: .22 }, { opacity: 0 }], { duration: 450, fill: 'forwards' }).onfinish = () => dot.remove();
+    const release = () => { grow.finished.then(fade); el.removeEventListener('pointerup', release); el.removeEventListener('pointerleave', release); };
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointerleave', release);
+  });
+});
+</script>
+</body>
+</html>

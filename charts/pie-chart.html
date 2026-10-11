@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Pie chart</title>
+<style id="page">
+:root {
+  color-scheme: dark;
+  --bg: #070708; --panel: #0f0f11; --line: rgba(255, 255, 255, .08); --grid: rgba(255, 255, 255, .07);
+  --text: #f4f4f5; --muted: #a1a1aa; --dim: #71717a;
+  --c1: #f4f4f5; --c2: #a1a1aa; --c3: #71717a; --c4: #52525b; --c5: #3f3f46;
+  --s0: #1c1c1f; --s1: #3f3f46; --s2: #52525b; --s3: #71717a; --s4: #a1a1aa; --s5: #f4f4f5;
+  --up: #22c55e; --down: #ef4444;
+  --ease: cubic-bezier(.85, 0, .15, 1); --out: cubic-bezier(.16, 1, .3, 1);
+}
+[data-theme="lagoon"] { --c1: #67e8f9; --c2: #22d3ee; --c3: #06b6d4; --c4: #0891b2; --c5: #0e7490; --s1: #083344; --s2: #155e75; --s3: #0891b2; --s4: #22d3ee; --s5: #67e8f9; }
+[data-theme="warm"] { --c1: #fcd34d; --c2: #fbbf24; --c3: #f59e0b; --c4: #d97706; --c5: #b45309; --s1: #451a03; --s2: #92400e; --s3: #d97706; --s4: #fbbf24; --s5: #fcd34d; }
+[data-theme="forest"] { --c1: #5eead4; --c2: #2dd4bf; --c3: #14b8a6; --c4: #0d9488; --c5: #0f766e; --s1: #042f2e; --s2: #115e59; --s3: #0d9488; --s4: #2dd4bf; --s5: #5eead4; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; padding: 24px 16px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+.card { width: min(92vw, 880px); padding: 22px 22px 18px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.head h1 { font: 650 15px/1.3 system-ui, sans-serif; letter-spacing: -.01em; }
+.head p { margin-top: 4px; color: var(--muted); font-size: 13px; }
+.themes { display: flex; gap: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 99px; flex: none; }
+.themes button { width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; background: var(--sw); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15); transition: transform .3s var(--out), box-shadow .3s; }
+.themes button:hover { transform: scale(1.15); }
+.themes button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 3.5px var(--text); }
+.note { margin-top: 14px; color: var(--dim); font-size: 12px; }
+.tip { position: fixed; left: 0; top: 0; z-index: 10; min-width: 120px; padding: 8px 10px; border-radius: 10px; background: rgba(24, 24, 27, .92); border: 1px solid rgba(255, 255, 255, .1); box-shadow: 0 12px 32px rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font-size: 12px; pointer-events: none; opacity: 0; transform: translate(var(--tx, 0), var(--ty, 0)) scale(.96); transition: opacity .15s, transform .25s var(--out); font-variant-numeric: tabular-nums; }
+.tip.on { opacity: 1; transform: translate(var(--tx, 0), var(--ty, 0)); }
+.tip b { display: block; margin-bottom: 4px; font-weight: 600; }
+.tip .row { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.tip .row i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
+.tip .row span { margin-left: auto; padding-left: 12px; color: var(--text); font-weight: 600; }
+.axis text, .lbl { fill: var(--dim); font: 11px system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.gridline { stroke: var(--grid); stroke-dasharray: 3 4; }
+.toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.seg { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; }
+.seg button { padding: 5px 10px; border: 0; border-radius: 7px; background: none; color: var(--muted); font: 500 12px system-ui, sans-serif; cursor: pointer; transition: background .2s, color .2s; }
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: rgba(255, 255, 255, .09); color: var(--text); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.legend > * { display: flex; align-items: center; gap: 7px; padding: 0; border: 0; background: none; color: var(--muted); font: 500 12px system-ui, sans-serif; cursor: default; transition: opacity .25s, color .25s; }
+.legend i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); flex: none; }
+.legend .off { opacity: .35; }
+@media (max-width: 560px) { .card { padding: 16px 14px 14px; } .head { flex-direction: column; } }
+</style>
+<style id="effect">
+.flow { display: inline-flex; align-items: flex-start; line-height: 1; font-variant-numeric: tabular-nums; }
+.flow .flow__col, .flow .flow__col > span { margin: 0; padding: 0; color: inherit; font: inherit; line-height: 1; }
+.flow .flow__col { display: inline-block; height: 1em; overflow: hidden; }
+.flow .flow__col > span { display: block; transition: transform .7s cubic-bezier(.16, 1, .3, 1); }
+@media (prefers-reduced-motion: reduce) { .flow .flow__col > span { transition: none; } }
+.stage { display: grid; place-items: center; position: relative; }
+.stage svg { width: min(100%, 340px); height: auto; overflow: visible; touch-action: pan-y; }
+.slice { stroke: var(--panel); stroke-width: 2; stroke-linejoin: round; transition: opacity .3s, transform .45s var(--out); cursor: pointer; }
+.pie.hover .slice { opacity: .35; }
+.pie.hover .slice.on { opacity: 1; }
+.center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; transition: opacity .35s; }
+.center b { font: 700 34px/1 system-ui, sans-serif; letter-spacing: -.02em; }
+.center span { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
+.solid .center { opacity: 0; }
+.legend { justify-content: center; margin-top: 18px; }
+.legend > span { cursor: pointer; }
+.legend small { color: var(--dim); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<main class="card">
+  <header class="head"><div><h1>Pie chart</h1><p>Browser share as a donut. Slices sweep in, pop out on hover, and the centre rolls to the hovered value.</p></div><div class="themes" data-themes role="group" aria-label="Colour theme"><button type="button" data-t="mono" style="--sw:#a1a1aa" aria-label="Mono theme" title="Mono"></button><button type="button" data-t="lagoon" style="--sw:#22d3ee" aria-label="Lagoon theme" title="Lagoon"></button><button type="button" data-t="warm" style="--sw:#fbbf24" aria-label="Warm theme" title="Warm"></button><button type="button" data-t="forest" style="--sw:#2dd4bf" aria-label="Forest theme" title="Forest"></button></div></header>
+  <div class="toolbar"><span></span><div class="seg" data-mode role="group" aria-label="Shape"><button type="button" data-m="donut" aria-pressed="true">Donut</button><button type="button" data-m="pie" aria-pressed="false">Pie</button></div></div>
+  <div class="stage" data-stage>
+    <svg viewBox="-170 -170 340 340" role="img" aria-label="Donut chart of browser share"><g class="pie" data-pie></g></svg>
+    <div class="center"><b data-value>0</b><span data-label>Visitors</span></div>
+  </div>
+  <div class="legend" data-legend></div>
+  <p class="note">Hover a slice or a legend item. Switch to a full pie and the hole closes smoothly.</p>
+</main>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs = {}, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.append(n); return n; };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const bezier = (x1, y1, x2, y2) => (t) => {
+  if (t <= 0 || t >= 1) return clamp(t, 0, 1);
+  let u = t;
+  for (let i = 0; i < 8; i++) {
+    const x = 3 * (1 - u) ** 2 * u * x1 + 3 * (1 - u) * u * u * x2 + u ** 3 - t;
+    const dx = 3 * (1 - u) ** 2 * x1 + 6 * (1 - u) * u * (x2 - x1) + 3 * u * u * (1 - x2);
+    if (Math.abs(x) < 1e-5 || !dx) break;
+    u = clamp(u - x / dx, 0, 1);
+  }
+  return 3 * (1 - u) ** 2 * u * y1 + 3 * (1 - u) * u * u * y2 + u ** 3;
+};
+const easeChart = bezier(.85, 0, .15, 1);
+const easeOut = bezier(.16, 1, .3, 1);
+const tween = (ms, fn, easing = easeChart, delay = 0) => new Promise((done) => {
+  if (reduce || ms <= 0) { fn(1); done(); return; }
+  const t0 = performance.now() + delay;
+  const step = (now) => {
+    const t = clamp((now - t0) / ms, 0, 1);
+    fn(easing(t));
+    if (t < 1) requestAnimationFrame(step); else done();
+  };
+  requestAnimationFrame(step);
+});
+const fmt = (v, o) => new Intl.NumberFormat('en-US', o).format(v);
+const compact = (v) => fmt(v, { notation: 'compact', maximumFractionDigits: 1 });
+const rng = (seed) => () => { seed |= 0; seed = seed + 0x6d2b79f5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const whenVisible = (node, fn) => new IntersectionObserver(([e], o) => { if (e.isIntersecting) { o.disconnect(); fn(); } }, { threshold: .25 }).observe(node);
+const hoverable = (node, on, off) => {
+  if (!/^(BUTTON|A|INPUT)$/.test(node.tagName)) node.tabIndex = 0;
+  node.addEventListener('pointerenter', on); node.addEventListener('pointerleave', off);
+  node.addEventListener('focus', on); node.addEventListener('blur', off);
+};
+const onResize = (node, fn) => { let w = node.clientWidth; new ResizeObserver(() => { if (node.clientWidth !== w) { w = node.clientWidth; fn(); } }).observe(node); };
+(() => {
+  const box = document.querySelector('[data-themes]');
+  const set = (t) => {
+    document.documentElement.dataset.theme = t;
+    box.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
+    try { localStorage.setItem('mk-chart-theme', t); } catch (e) {}
+  };
+  let saved = 'mono';
+  try { saved = localStorage.getItem('mk-chart-theme') || 'mono'; } catch (e) {}
+  box.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) set(b.dataset.t); });
+  set(saved);
+})();
+
+const TAU = Math.PI * 2;
+// Angles start at 12 o'clock and run clockwise.
+const polar = (r, a) => [r * Math.sin(a), -r * Math.cos(a)];
+const P = (r, a) => polar(r, a).map((v) => Math.round(v * 100) / 100).join(' ');
+const sector = (r0, r1, a0, a1) => {
+  a1 = Math.min(a1, a0 + TAU - 1e-4);
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  if (a1 - a0 < 1e-4) return '';
+  if (r0 <= 0) return `M0 0L${P(r1, a0)}A${r1} ${r1} 0 ${large} 1 ${P(r1, a1)}Z`;
+  return `M${P(r1, a0)}A${r1} ${r1} 0 ${large} 1 ${P(r1, a1)}L${P(r0, a1)}A${r0} ${r0} 0 ${large} 0 ${P(r0, a0)}Z`;
+};
+const arc = (r, a0, a1) => {
+  a1 = Math.min(a1, a0 + TAU - 1e-4);
+  if (a1 - a0 < 1e-4) return `M${P(r, a0)}`;
+  return `M${P(r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${P(r, a1)}`;
+};
+
+// Rolling digits: each digit is a 0–9 column that slides to its value.
+const flow = (node, format) => {
+  node.classList.add('flow');
+  node.setAttribute('role', 'img');
+  let chars = [];
+  return (value) => {
+    const s = format(value);
+    if (s.replace(/\d/g, '0') !== chars.map((c) => c.mask).join('')) {
+      node.textContent = '';
+      chars = [...s].map((ch) => {
+        if (!/\d/.test(ch)) { node.append(ch); return { mask: ch }; }
+        const col = document.createElement('span');
+        col.className = 'flow__col';
+        col.innerHTML = '<span>0<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9</span>';
+        node.append(col);
+        return { mask: '0', strip: col.firstChild };
+      });
+    }
+    node.setAttribute('aria-label', s);
+    [...s].forEach((ch, i) => { if (chars[i].strip) chars[i].strip.style.transform = `translateY(${-Number(ch) * 10}%)`; });
+  };
+};
+const data = [
+  { name: 'Chrome', value: 275, color: 'var(--c5)' },
+  { name: 'Safari', value: 200, color: 'var(--c4)' },
+  { name: 'Firefox', value: 187, color: 'var(--c3)' },
+  { name: 'Edge', value: 173, color: 'var(--c2)' },
+  { name: 'Other', value: 90, color: 'var(--c1)' },
+];
+const total = data.reduce((a, d) => a + d.value, 0);
+const R = 150;
+let inner = 0, sweep = 0, active = -2;
+const g = document.querySelector('[data-pie]');
+const slices = data.map((d) => el('path', { class: 'slice', fill: d.color }, g));
+let a = 0;
+data.forEach((d) => { d.a0 = a; a += d.value / total * TAU; d.a1 = a; d.mid = (d.a0 + d.a1) / 2; });
+const setValue = flow(document.querySelector('[data-value]'), (v) => fmt(Math.round(v)));
+const label = document.querySelector('[data-label]');
+
+function draw() {
+  const end = sweep * TAU;
+  slices.forEach((p, i) => p.setAttribute('d', sector(inner, R, Math.min(data[i].a0, end), Math.min(data[i].a1, end))));
+}
+function focus(i) {
+  active = i;
+  g.classList.toggle('hover', i >= 0);
+  slices.forEach((p, k) => {
+    p.classList.toggle('on', k === i);
+    const [dx, dy] = k === i ? polar(10, data[k].mid) : [0, 0];
+    p.style.transform = `translate(${dx}px, ${dy}px)`;
+  });
+  legend.querySelectorAll('span').forEach((n, k) => n.classList.toggle('off', i >= 0 && k !== i));
+  setValue(i >= 0 ? data[i].value : total);
+  label.textContent = i >= 0 ? `${data[i].name} · ${Math.round(data[i].value / total * 100)}%` : 'Visitors';
+}
+const legend = document.querySelector('[data-legend]');
+data.forEach((d, i) => {
+  const n = document.createElement('span');
+  n.innerHTML = `<i style="--k:${d.color}"></i>${d.name} <small>${Math.round(d.value / total * 100)}%</small>`;
+  hoverable(n, () => focus(i), () => focus(-1));
+  legend.append(n);
+});
+const svg = g.ownerSVGElement;
+svg.addEventListener('pointermove', (e) => {
+  const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const { x, y } = pt.matrixTransform(svg.getScreenCTM().inverse());
+  const r = Math.hypot(x, y), a = (Math.atan2(x, -y) + TAU) % TAU;
+  const i = r >= inner - 2 && r <= R + 14 ? data.findIndex((d) => a >= d.a0 && a < d.a1) : -1;
+  if (i !== active) focus(i);
+});
+svg.addEventListener('pointerleave', () => focus(-1));
+document.querySelector('[data-mode]').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  e.currentTarget.querySelectorAll('button').forEach((n) => n.setAttribute('aria-pressed', String(n === b)));
+  const from = inner, to = b.dataset.m === 'donut' ? 92 : 0;
+  document.querySelector('[data-stage]').classList.toggle('solid', !to);
+  tween(650, (t) => { inner = lerp(from, to, t); draw(); }, easeOut);
+});
+
+inner = 92;
+draw();
+whenVisible(g, () => { tween(1200, (t) => { sweep = t; draw(); }); setValue(total); });
+</script>
+</body>
+</html>

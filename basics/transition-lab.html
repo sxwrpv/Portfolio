@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Transition lab: springs, easing, CSS spring generator</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 24px; padding: 28px; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+@media (max-width: 760px) { body { grid-template-columns: 1fr; } }
+.panel { display: grid; gap: 14px; align-content: start; padding: 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+label { display: grid; gap: 4px; color: var(--muted); font-size: 13px; }
+label span { display: flex; justify-content: space-between; }
+label b { color: var(--text); font-variant-numeric: tabular-nums; }
+input[type=range] { accent-color: var(--accent); }
+select { padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+.stage { display: grid; gap: 18px; align-content: start; }
+.track { position: relative; height: 70px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+.track span { position: absolute; left: 12px; top: 50%; translate: 0 -50%; color: var(--muted); font-size: 12px; }
+.play { justify-self: start; padding: 10px 18px; border: 0; border-radius: 10px; background: var(--accent); color: #111; font: 700 15px/1 system-ui, sans-serif; cursor: pointer; }
+pre { padding: 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; color: var(--muted); max-height: 160px; overflow: auto; }
+canvas { width: 100%; height: 160px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+</style>
+<style id="effect">
+.ball { position: absolute; left: 12px; top: 50%; width: 46px; height: 46px; margin-top: -23px; border-radius: 12px; background: var(--accent); }
+.ball--b { background: #4f9dff; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <label><span>Stiffness <b data-v="k"></b></span><input type="range" min="20" max="900" value="300" data-in="k"></label>
+  <label><span>Damping <b data-v="c"></b></span><input type="range" min="2" max="80" value="18" data-in="c"></label>
+  <label><span>Mass <b data-v="m"></b></span><input type="range" min=".2" max="5" step=".1" value="1" data-in="m"></label>
+  <label><span>Compare with</span><select data-compare><option value="cubic-bezier(.2,.8,.2,1)">ease-out expo-ish</option><option value="bounce">bounce</option><option value="ease-in-out">ease-in-out</option><option value="linear">linear</option></select></label>
+  <label><span>Delay (ms) <b data-v="delay"></b></span><input type="range" min="0" max="800" step="50" value="0" data-in="delay"></label>
+  <label><span>Repeat <b data-v="rep"></b></span><input type="range" min="0" max="3" value="0" data-in="rep"></label>
+</div>
+<div class="stage">
+  <button class="play" type="button" data-play>Play</button>
+  <div class="track"><span>spring</span><div class="ball" data-a></div></div>
+  <div class="track"><span data-cmp-name>compare</span><div class="ball ball--b" data-b></div></div>
+  <canvas width="900" height="320" data-curve aria-label="Spring curve"></canvas>
+  <pre data-css></pre>
+</div>
+<script>
+function spring(k, c, m) {
+  const w0 = Math.sqrt(k / m), z = c / (2 * Math.sqrt(k * m)), wd = w0 * Math.sqrt(Math.max(1e-9, 1 - z * z));
+  const x = (t) => (z < 1 ? 1 - Math.exp(-z * w0 * t) * (Math.cos(wd * t) + (z * w0 / wd) * Math.sin(wd * t)) : z === 1 ? 1 - Math.exp(-w0 * t) * (1 + w0 * t) : (() => { const r1 = -w0 * (z - Math.sqrt(z * z - 1)), r2 = -w0 * (z + Math.sqrt(z * z - 1)); return 1 - (r2 * Math.exp(r1 * t) - r1 * Math.exp(r2 * t)) / (r2 - r1); })());
+  let T = .05;
+  while (T < 10 && (Math.abs(1 - x(T)) > .001 || Math.abs(1 - x(T - .05)) > .001)) T += .01;
+  const n = Math.min(80, Math.max(24, Math.round(T * 30)));
+  const pts = Array.from({ length: n + 1 }, (_, i) => +x((T * i) / n).toFixed(4));
+  pts[n] = 1;
+  return { x, T, easing: `linear(${pts.join(', ')})`, duration: Math.round(T * 1000) };
+}
+const BOUNCE = (() => {
+  const f = (t) => { const n = 7.5625, d = 2.75; if (t < 1 / d) return n * t * t; if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75; if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375; return n * (t -= 2.625 / d) * t + .984375; };
+  return `linear(${Array.from({ length: 61 }, (_, i) => +f(i / 60).toFixed(4)).join(', ')})`;
+})();
+const val = {};
+const canvas = document.querySelector('[data-curve]');
+const ctx = canvas.getContext('2d');
+let s;
+document.querySelectorAll('[data-in]').forEach((i) => { const up = () => { val[i.dataset.in] = Number(i.value); document.querySelector(`[data-v="${i.dataset.in}"]`).textContent = i.value; draw(); }; i.addEventListener('input', up); up(); });
+function draw() {
+  if (val.k === undefined || val.c === undefined || val.m === undefined) return;
+  s = spring(val.k, val.c, val.m);
+  const W = canvas.width, H = canvas.height, pad = 30;
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = '#2a2a2e'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pad, H - pad - (H - pad * 2) * .8); ctx.lineTo(W - pad, H - pad - (H - pad * 2) * .8); ctx.stroke();
+  ctx.strokeStyle = '#ff6a3d'; ctx.lineWidth = 4; ctx.beginPath();
+  for (let i = 0; i <= 200; i++) { const t = (s.T * i) / 200; const y = s.x(t); const px = pad + ((W - pad * 2) * i) / 200; const py = H - pad - (H - pad * 2) * .8 * y; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+  ctx.stroke();
+  document.querySelector('[data-css]').textContent = `transition: transform ${s.duration}ms ${s.easing};`;
+}
+const a = document.querySelector('[data-a]'), b = document.querySelector('[data-b]');
+const cmp = document.querySelector('[data-compare]');
+document.querySelector('[data-play]').addEventListener('click', () => {
+  const dist = a.parentElement.clientWidth - 70;
+  const kf = [{ transform: 'translateX(0)' }, { transform: `translateX(${dist}px)` }];
+  const opts = { delay: val.delay, iterations: val.rep + 1, direction: 'alternate', fill: 'both' };
+  a.animate(kf, { ...opts, duration: s.duration, easing: s.easing });
+  const ce = cmp.value === 'bounce' ? BOUNCE : cmp.value;
+  document.querySelector('[data-cmp-name]').textContent = cmp.options[cmp.selectedIndex].text;
+  b.animate(kf, { ...opts, duration: 700, easing: ce });
+});
+draw();
+</script>
+</body>
+</html>

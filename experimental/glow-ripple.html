@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Glow ripple (AI-assistant style edge glow)</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 22px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+button { padding: 10px 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
+.phone { position: relative; width: 300px; height: 600px; border-radius: 46px; background: linear-gradient(#1c1c22, #121216); border: 8px solid #2a2a30; overflow: hidden; display: grid; place-items: center; color: var(--muted); }
+</style>
+<style id="effect">
+.phone__label { position: relative; z-index: 1; }
+.glow { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; opacity: 0; }
+.glow::before { content: ""; position: absolute; inset: -50%; background: conic-gradient(#ff6a3d, #ffd23f, #3ddc84, #4f9dff, #b26bff, #ff5fa2, #ff6a3d); animation: glow-spin 3s linear infinite; }
+.glow::after { content: ""; position: absolute; inset: 12px; border-radius: 30px; background: #141418; filter: blur(12px); }
+.phone.is-on .glow { animation: glow-in .9s cubic-bezier(.2, .8, .2, 1) forwards; }
+.ripple-ring { position: absolute; left: 50%; bottom: 40px; width: 40px; height: 40px; margin-left: -20px; border-radius: 50%; border: 3px solid #fff; opacity: 0; pointer-events: none; }
+.phone.is-on .ripple-ring { animation: ring 1s cubic-bezier(.2, .8, .2, 1); }
+@keyframes glow-spin { to { transform: rotate(360deg); } }
+@keyframes glow-in { 0% { opacity: 0; transform: scale(1.08); } 100% { opacity: 1; transform: none; } }
+@keyframes ring { 0% { opacity: .9; transform: scale(.3); } 100% { opacity: 0; transform: scale(14); } }
+@media (prefers-reduced-motion: reduce) { .glow::before { animation: none; } .phone.is-on .glow { animation: none; opacity: 1; } .phone.is-on .ripple-ring { animation: none; } }
+</style>
+</head>
+<body>
+<div class="phone" data-phone><span class="glow" aria-hidden="true"></span><span class="phone__label">Listening…</span><span class="ripple-ring" aria-hidden="true"></span></div>
+<button type="button" data-toggle aria-pressed="false">Activate</button>
+<script>
+const phone = document.querySelector('[data-phone]');
+const btn = document.querySelector('[data-toggle]');
+btn.addEventListener('click', () => {
+  const on = !phone.classList.contains('is-on');
+  phone.classList.toggle('is-on', on);
+  btn.setAttribute('aria-pressed', String(on));
+  btn.textContent = on ? 'Stop' : 'Activate';
+});
+</script>
+</body>
+</html>

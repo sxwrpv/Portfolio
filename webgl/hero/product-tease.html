@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Interface teaser</title>
+<style id="page">
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body { overflow: hidden; background: #000; color: #fff; font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+canvas[data-gl] { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.dock { position: fixed; left: 16px; bottom: 16px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; }
+.dock button, .dock label { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, .28); border-radius: 999px; background: rgba(10, 10, 12, .5); color: #fff; font: 500 13px/1 system-ui, sans-serif; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.dock input[type=file] { display: none; }
+.dock input[type=color] { width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
+.gl-fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: #aaa; }
+.embed .dock, .embed .hint { display: none !important; }
+.embed canvas[data-gl] { touch-action: pan-y; }
+body { background: #0b0b0d; }
+.stage { position: fixed; inset: 0; perspective: 1600px; overflow: hidden; }
+.ui { position: absolute; left: 50%; top: 50%; width: 1100px; height: 700px; margin: -350px 0 0 -550px; border-radius: 14px; background: #141417; box-shadow: 0 0 0 1px rgba(255, 255, 255, .07), 0 40px 120px rgba(0, 0, 0, .6); display: grid; grid-template-columns: 190px 1fr; overflow: hidden; animation: tour 10s cubic-bezier(.6, 0, .3, 1) infinite; transform-origin: 50% 50%; }
+.side { padding: 18px; display: grid; gap: 10px; align-content: start; border-right: 1px solid rgba(255, 255, 255, .06); }
+.side b { color: #eee; font: 700 15px/1 system-ui, sans-serif; margin-bottom: 12px; }
+.side i { height: 10px; border-radius: 4px; background: rgba(255, 255, 255, .09); }
+.main { padding: 22px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 60px 1fr 1fr; gap: 16px; }
+.main .bar { grid-column: 1 / -1; border-radius: 10px; background: rgba(255, 255, 255, .05); }
+.card { border-radius: 12px; background: var(--g); }
+.c1 { --g: repeating-linear-gradient(90deg, #1ec8ff 0 14px, #0a1a2a 14px 22px); }
+.c2 { --g: linear-gradient(135deg, #fff 0 48%, #111 48% 52%, #fff 52%); }
+.c3 { --g: radial-gradient(circle at 50% 50%, #ff2f8f 0 18%, #2a0d1c 50%); }
+.c4 { --g: radial-gradient(circle at 30% 60%, #6b5bff 0 3px, transparent 4px) 0 0 / 18px 18px, #12101c; }
+.c5 { --g: conic-gradient(from 90deg, #18c58f, #0b1c16, #18c58f); }
+.c6 { --g: linear-gradient(#232327, #19191c); }
+.beam { position: absolute; inset: -20%; background: conic-gradient(from 200deg at 50% 110%, transparent 0deg, rgba(255, 255, 255, .12) 12deg, transparent 24deg, transparent 40deg, rgba(160, 170, 255, .1) 50deg, transparent 62deg); mix-blend-mode: screen; animation: beam 10s ease-in-out infinite; pointer-events: none; }
+.end { position: fixed; inset: 0; display: grid; place-items: center; font: 600 clamp(30px, 6vw, 84px)/1 "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: -.03em; color: #fff; opacity: 0; animation: end 10s ease infinite; pointer-events: none; }
+.end span { font-weight: 300; opacity: .6; }
+@keyframes tour { 0% { transform: rotateX(55deg) rotateZ(-28deg) scale(.7) translate(10%, 10%); } 35% { transform: rotateX(48deg) rotateZ(-18deg) scale(1.1) translate(-12%, 0); } 65% { transform: rotateX(38deg) rotateZ(-10deg) scale(.9) translate(4%, -6%); } 80%, 100% { transform: rotateX(60deg) rotateZ(-10deg) scale(.55) translate(0, 30%); opacity: .25; } }
+@keyframes beam { 0%, 100% { transform: rotate(-8deg); opacity: .6; } 50% { transform: rotate(10deg); opacity: 1; } }
+@keyframes end { 0%, 74% { opacity: 0; transform: translateY(12px); } 84%, 96% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ui, .beam, .end { animation: none; } .ui { transform: rotateX(45deg) rotateZ(-15deg) scale(.8); } .end { opacity: 0; } }
+</style>
+</head>
+<body>
+<div class="stage"><div class="ui"><div class="side"><b>sxwrpv</b><i></i><i style="width:70%"></i><i style="width:85%"></i><i style="width:60%"></i><i></i><i style="width:75%"></i></div><div class="main"><div class="bar"></div><div class="card c1"></div><div class="card c2"></div><div class="card c3"></div><div class="card c4"></div><div class="card c5"></div><div class="card c6"></div></div></div><div class="beam"></div></div>
+<p class="end"><span>Introducing&nbsp;</span>sxwrpv</p>
+</body>
+</html>

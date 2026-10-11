@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Heatmap chart</title>
+<style id="page">
+:root {
+  color-scheme: dark;
+  --bg: #070708; --panel: #0f0f11; --line: rgba(255, 255, 255, .08); --grid: rgba(255, 255, 255, .07);
+  --text: #f4f4f5; --muted: #a1a1aa; --dim: #71717a;
+  --c1: #f4f4f5; --c2: #a1a1aa; --c3: #71717a; --c4: #52525b; --c5: #3f3f46;
+  --s0: #1c1c1f; --s1: #3f3f46; --s2: #52525b; --s3: #71717a; --s4: #a1a1aa; --s5: #f4f4f5;
+  --up: #22c55e; --down: #ef4444;
+  --ease: cubic-bezier(.85, 0, .15, 1); --out: cubic-bezier(.16, 1, .3, 1);
+}
+[data-theme="lagoon"] { --c1: #67e8f9; --c2: #22d3ee; --c3: #06b6d4; --c4: #0891b2; --c5: #0e7490; --s1: #083344; --s2: #155e75; --s3: #0891b2; --s4: #22d3ee; --s5: #67e8f9; }
+[data-theme="warm"] { --c1: #fcd34d; --c2: #fbbf24; --c3: #f59e0b; --c4: #d97706; --c5: #b45309; --s1: #451a03; --s2: #92400e; --s3: #d97706; --s4: #fbbf24; --s5: #fcd34d; }
+[data-theme="forest"] { --c1: #5eead4; --c2: #2dd4bf; --c3: #14b8a6; --c4: #0d9488; --c5: #0f766e; --s1: #042f2e; --s2: #115e59; --s3: #0d9488; --s4: #2dd4bf; --s5: #5eead4; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; padding: 24px 16px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+.card { width: min(92vw, 880px); padding: 22px 22px 18px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.head h1 { font: 650 15px/1.3 system-ui, sans-serif; letter-spacing: -.01em; }
+.head p { margin-top: 4px; color: var(--muted); font-size: 13px; }
+.themes { display: flex; gap: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 99px; flex: none; }
+.themes button { width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; background: var(--sw); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15); transition: transform .3s var(--out), box-shadow .3s; }
+.themes button:hover { transform: scale(1.15); }
+.themes button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 3.5px var(--text); }
+.note { margin-top: 14px; color: var(--dim); font-size: 12px; }
+.tip { position: fixed; left: 0; top: 0; z-index: 10; min-width: 120px; padding: 8px 10px; border-radius: 10px; background: rgba(24, 24, 27, .92); border: 1px solid rgba(255, 255, 255, .1); box-shadow: 0 12px 32px rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font-size: 12px; pointer-events: none; opacity: 0; transform: translate(var(--tx, 0), var(--ty, 0)) scale(.96); transition: opacity .15s, transform .25s var(--out); font-variant-numeric: tabular-nums; }
+.tip.on { opacity: 1; transform: translate(var(--tx, 0), var(--ty, 0)); }
+.tip b { display: block; margin-bottom: 4px; font-weight: 600; }
+.tip .row { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.tip .row i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
+.tip .row span { margin-left: auto; padding-left: 12px; color: var(--text); font-weight: 600; }
+.axis text, .lbl { fill: var(--dim); font: 11px system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.gridline { stroke: var(--grid); stroke-dasharray: 3 4; }
+.toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.seg { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; }
+.seg button { padding: 5px 10px; border: 0; border-radius: 7px; background: none; color: var(--muted); font: 500 12px system-ui, sans-serif; cursor: pointer; transition: background .2s, color .2s; }
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: rgba(255, 255, 255, .09); color: var(--text); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.legend > * { display: flex; align-items: center; gap: 7px; padding: 0; border: 0; background: none; color: var(--muted); font: 500 12px system-ui, sans-serif; cursor: default; transition: opacity .25s, color .25s; }
+.legend i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); flex: none; }
+.legend .off { opacity: .35; }
+@media (max-width: 560px) { .card { padding: 16px 14px 14px; } .head { flex-direction: column; } }
+</style>
+<style id="effect">
+.scroll { overflow-x: auto; scrollbar-width: thin; }
+.scroll svg { display: block; width: 100%; min-width: 720px; height: auto; }
+.cell { transform-box: fill-box; transform-origin: center; transform: scale(0); transition: transform .5s var(--out), opacity .25s; }
+.in .cell { transform: scale(1); }
+.cell:hover { transform: scale(1.35); }
+.cells.filter .cell { opacity: .12; }
+.cells.filter .cell.keep { opacity: 1; }
+.q { fill: var(--dim); font: 600 10px system-ui, sans-serif; }
+.m { fill: var(--muted); font: 500 11px system-ui, sans-serif; }
+.d { fill: var(--dim); font: 500 10px system-ui, sans-serif; }
+.qsep { stroke: rgba(255, 255, 255, .1); }
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 12px; color: var(--dim); font-size: 12px; }
+.scale { display: flex; align-items: center; gap: 5px; }
+.scale button { width: 12px; height: 12px; padding: 0; border: 0; border-radius: 50%; background: var(--k); cursor: pointer; transition: transform .2s var(--out); }
+.scale button:hover { transform: scale(1.3); }
+.total b { color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .cell { transition: opacity .25s; } }
+</style>
+</head>
+<body>
+<main class="card">
+  <header class="head"><div><h1>Heatmap chart</h1><p>A year of activity as circular cells, split by calendar quarter. Cells ripple in diagonally; the legend filters by level.</p></div><div class="themes" data-themes role="group" aria-label="Colour theme"><button type="button" data-t="mono" style="--sw:#a1a1aa" aria-label="Mono theme" title="Mono"></button><button type="button" data-t="lagoon" style="--sw:#22d3ee" aria-label="Lagoon theme" title="Lagoon"></button><button type="button" data-t="warm" style="--sw:#fbbf24" aria-label="Warm theme" title="Warm"></button><button type="button" data-t="forest" style="--sw:#2dd4bf" aria-label="Forest theme" title="Forest"></button></div></header>
+  <div class="scroll"><svg data-svg role="img" aria-label="Heatmap of daily contributions over the last year"></svg></div>
+  <div class="foot"><span class="total" data-total></span><span class="scale" data-scale>Less</span></div>
+  <p class="note">Hover a cell for its count. Hover a legend swatch to keep only that level lit.</p>
+</main>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs = {}, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.append(n); return n; };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const bezier = (x1, y1, x2, y2) => (t) => {
+  if (t <= 0 || t >= 1) return clamp(t, 0, 1);
+  let u = t;
+  for (let i = 0; i < 8; i++) {
+    const x = 3 * (1 - u) ** 2 * u * x1 + 3 * (1 - u) * u * u * x2 + u ** 3 - t;
+    const dx = 3 * (1 - u) ** 2 * x1 + 6 * (1 - u) * u * (x2 - x1) + 3 * u * u * (1 - x2);
+    if (Math.abs(x) < 1e-5 || !dx) break;
+    u = clamp(u - x / dx, 0, 1);
+  }
+  return 3 * (1 - u) ** 2 * u * y1 + 3 * (1 - u) * u * u * y2 + u ** 3;
+};
+const easeChart = bezier(.85, 0, .15, 1);
+const easeOut = bezier(.16, 1, .3, 1);
+const tween = (ms, fn, easing = easeChart, delay = 0) => new Promise((done) => {
+  if (reduce || ms <= 0) { fn(1); done(); return; }
+  const t0 = performance.now() + delay;
+  const step = (now) => {
+    const t = clamp((now - t0) / ms, 0, 1);
+    fn(easing(t));
+    if (t < 1) requestAnimationFrame(step); else done();
+  };
+  requestAnimationFrame(step);
+});
+const fmt = (v, o) => new Intl.NumberFormat('en-US', o).format(v);
+const compact = (v) => fmt(v, { notation: 'compact', maximumFractionDigits: 1 });
+const rng = (seed) => () => { seed |= 0; seed = seed + 0x6d2b79f5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const whenVisible = (node, fn) => new IntersectionObserver(([e], o) => { if (e.isIntersecting) { o.disconnect(); fn(); } }, { threshold: .25 }).observe(node);
+const hoverable = (node, on, off) => {
+  if (!/^(BUTTON|A|INPUT)$/.test(node.tagName)) node.tabIndex = 0;
+  node.addEventListener('pointerenter', on); node.addEventListener('pointerleave', off);
+  node.addEventListener('focus', on); node.addEventListener('blur', off);
+};
+const onResize = (node, fn) => { let w = node.clientWidth; new ResizeObserver(() => { if (node.clientWidth !== w) { w = node.clientWidth; fn(); } }).observe(node); };
+(() => {
+  const box = document.querySelector('[data-themes]');
+  const set = (t) => {
+    document.documentElement.dataset.theme = t;
+    box.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
+    try { localStorage.setItem('mk-chart-theme', t); } catch (e) {}
+  };
+  let saved = 'mono';
+  try { saved = localStorage.getItem('mk-chart-theme') || 'mono'; } catch (e) {}
+  box.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) set(b.dataset.t); });
+  set(saved);
+})();
+
+const tip = (() => {
+  const node = Object.assign(document.createElement('div'), { className: 'tip' });
+  node.setAttribute('aria-hidden', 'true');
+  document.body.append(node);
+  let html = '';
+  return {
+    show(x, y, content) {
+      if (content !== html) { node.innerHTML = content; html = content; }
+      const r = node.getBoundingClientRect();
+      const tx = x + 16 + r.width > innerWidth - 8 ? x - 16 - r.width : x + 16;
+      const ty = clamp(y - r.height / 2, 8, innerHeight - r.height - 8);
+      node.style.setProperty('--tx', `${tx}px`);
+      node.style.setProperty('--ty', `${ty}px`);
+      node.classList.add('on');
+    },
+    hide() { node.classList.remove('on'); },
+  };
+})();
+const row = (color, label, value) => `<div class="row"><i style="--k:${color}"></i>${label}<span>${value}</span></div>`;
+const rand = rng(8);
+const LEVELS = ['var(--s0)', 'var(--s1)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
+const END = Date.UTC(2026, 9, 10);
+const start = END - 52 * 7 * 864e5 - new Date(END).getUTCDay() * 864e5;
+const days = [];
+for (let t = start; t <= END; t += 864e5) {
+  const d = new Date(t), wd = d.getUTCDay(), i = days.length;
+  const busy = (Math.sin(i / 23) + 1) / 2 * (wd === 0 || wd === 6 ? .35 : 1);
+  const n = rand() < .18 + busy * .55 ? Math.round(rand() * 14 * busy + rand() * 3) : 0;
+  days.push({ d, wd, n, week: Math.floor(i / 7) });
+}
+const level = (n) => (n === 0 ? 0 : n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4);
+const CELL = 14, GAP = 3, QGAP = 10, LEFT = 28, TOP = 36;
+const weeks = days.at(-1).week + 1;
+// Quarter boundaries get a wider gap and a label.
+const qStart = new Set();
+for (let w = 1; w < weeks; w++) { const m = new Date(start + w * 7 * 864e5).getUTCMonth(), pm = new Date(start + (w - 1) * 7 * 864e5).getUTCMonth(); if (m !== pm && m % 3 === 0) qStart.add(w); }
+const colX = [];
+let cx = LEFT;
+for (let w = 0; w < weeks; w++) { if (qStart.has(w)) cx += QGAP; colX.push(cx); cx += CELL + GAP; }
+const svg = document.querySelector('[data-svg]');
+const W = cx + 4, H = TOP + 7 * (CELL + GAP) + 4;
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+['', 'Mon', '', 'Wed', '', 'Fri', ''].forEach((l, i) => { if (l) { const t = el('text', { class: 'd', x: 0, y: TOP + i * (CELL + GAP) + 10 }, svg); t.textContent = l; } });
+let lastM = -1;
+for (let w = 0; w < weeks; w++) {
+  const d = new Date(start + w * 7 * 864e5), m = d.getUTCMonth();
+  if (m !== lastM && w < weeks - 2) { const t = el('text', { class: 'm', x: colX[w], y: TOP - 8 }, svg); t.textContent = d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }); lastM = m; }
+  if (qStart.has(w) || w === 0) {
+    const q = el('text', { class: 'q', x: colX[w], y: TOP - 24 }, svg); q.textContent = `Q${Math.floor(m / 3) + 1}`;
+    if (w) el('line', { class: 'qsep', x1: colX[w] - QGAP / 2 - GAP / 2, x2: colX[w] - QGAP / 2 - GAP / 2, y1: TOP - 30, y2: H - 2 }, svg);
+  }
+}
+const cellsG = el('g', { class: 'cells' }, svg);
+const cells = days.map((c) => {
+  const node = el('circle', { class: 'cell', cx: colX[c.week] + CELL / 2, cy: TOP + c.wd * (CELL + GAP) + CELL / 2, r: CELL * .42, fill: LEVELS[level(c.n)] }, cellsG);
+  node.style.transitionDelay = `${(c.week + c.wd) * 9}ms`;
+  return node;
+});
+cells.forEach((node, i) => {
+  node.addEventListener('pointerenter', (e) => {
+    const c = days[i];
+    tip.show(e.clientX, e.clientY, `<b>${c.d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</b>${row(LEVELS[level(c.n)], 'Contributions', c.n)}`);
+  });
+  node.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') tip.hide(); });
+});
+document.addEventListener('pointerdown', (e) => { if (!e.target.classList.contains('cell')) tip.hide(); });
+const total = days.reduce((a, c) => a + c.n, 0);
+document.querySelector('[data-total]').innerHTML = `<b>${fmt(total)}</b> contributions in the last year`;
+const scale = document.querySelector('[data-scale]');
+LEVELS.forEach((c, l) => {
+  const b = Object.assign(document.createElement('button'), { type: 'button' });
+  b.style.setProperty('--k', c);
+  b.setAttribute('aria-label', `Show level ${l} only`);
+  hoverable(b, () => { cellsG.classList.add('filter'); cells.forEach((n, i) => n.classList.toggle('keep', level(days[i].n) === l)); }, () => cellsG.classList.remove('filter'));
+  scale.append(b);
+});
+scale.append('More');
+// Clear the ripple delays after the entrance so hover feels instant.
+whenVisible(svg, () => { svg.classList.add('in'); setTimeout(() => cells.forEach((n) => { n.style.transitionDelay = ''; }), (weeks + 7) * 9 + 600); });
+</script>
+</body>
+</html>

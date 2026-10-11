@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Enter, exit, keyframes and staggered variants</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; padding: 28px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+section { display: grid; gap: 14px; align-content: start; justify-items: center; min-height: 260px; padding: 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+h2 { justify-self: stretch; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.ctl { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.box { width: 90px; height: 90px; border-radius: 20px; background: var(--accent); }
+</style>
+<style id="effect">
+.menu-v { width: 220px; display: grid; gap: 8px; list-style: none; padding: 12px; border-radius: 16px; background: var(--bg); transform-origin: 50% 0; }
+.menu-v li { padding: 10px 12px; border-radius: 10px; background: var(--panel); }
+.menu-v:not(.is-open) { transform: scaleY(.6); opacity: 0; transition: transform .3s ease-in .15s, opacity .2s .2s; }
+.menu-v.is-open { transition: transform .45s cubic-bezier(.2, 1.2, .3, 1), opacity .2s; }
+.menu-v li { opacity: 0; transform: translateX(-16px); transition: opacity .2s, transform .3s; transition-delay: calc((5 - var(--i)) * 25ms); }
+.menu-v.is-open li { opacity: 1; transform: none; transition: opacity .3s, transform .5s cubic-bezier(.2, 1.2, .3, 1); transition-delay: calc(120ms + var(--i) * 60ms); }
+@media (prefers-reduced-motion: reduce) { .menu-v, .menu-v li { transition: none !important; } }
+</style>
+</head>
+<body>
+<section><h2>Enter · exit</h2><div style="height:110px;display:grid;place-items:center" data-pres></div><button class="ctl" type="button" data-toggle>Toggle</button></section>
+<section><h2>Keyframes</h2><div class="box" data-kf></div><button class="ctl" type="button" data-run-kf>Play</button></section>
+<section><h2>Interruptible keyframes</h2><div class="box" data-wild style="background:#4f9dff"></div><button class="ctl" type="button" data-run-wild>Spin (click repeatedly)</button></section>
+<section><h2>Variants · parent then children</h2><button class="ctl" type="button" data-menu-btn aria-expanded="false">Open menu</button><ul class="menu-v" data-menu><li style="--i:0">Explore</li><li style="--i:1">Collections</li><li style="--i:2">Journal</li><li style="--i:3">Playground</li><li style="--i:4">Say hello</li></ul></section>
+<section><h2>Animate on state change</h2><div class="box" data-state style="transition: transform .6s cubic-bezier(.2,1.3,.3,1), border-radius .6s, background-color .4s"></div><button class="ctl" type="button" data-randomise>Randomise</button></section>
+<section><h2>Exit direction (presence data)</h2><div style="position:relative;width:200px;height:120px;overflow:hidden;border-radius:16px" data-slides></div><div style="display:flex;gap:8px"><button class="ctl" type="button" data-dir="-1">←</button><button class="ctl" type="button" data-dir="1">→</button></div></section>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const D = (ms) => (reduce ? 0 : ms);
+const pres = document.querySelector('[data-pres]');
+let shown = null;
+document.querySelector('[data-toggle]').addEventListener('click', async () => {
+  if (shown) { const el = shown; shown = null; await el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.5) rotate(-20deg)' }], { duration: D(300), easing: 'ease-in', fill: 'forwards' }).finished; el.remove(); return; }
+  shown = document.createElement('div');
+  shown.className = 'box';
+  pres.append(shown);
+  shown.animate([{ opacity: 0, transform: 'scale(.4) rotate(30deg)' }, { opacity: 1, transform: 'none' }], { duration: D(600), easing: 'cubic-bezier(.2, 1.5, .3, 1)' });
+});
+document.querySelector('[data-toggle]').click();
+document.querySelector('[data-run-kf]').addEventListener('click', () => {
+  document.querySelector('[data-kf]').animate([
+    { transform: 'scale(1) rotate(0)', borderRadius: '20px' },
+    { transform: 'scale(1.6) rotate(0)', borderRadius: '20px', offset: .2 },
+    { transform: 'scale(1.6) rotate(180deg)', borderRadius: '50%', offset: .5 },
+    { transform: 'scale(1) rotate(180deg)', borderRadius: '50%', offset: .8 },
+    { transform: 'scale(1) rotate(0)', borderRadius: '20px' },
+  ], { duration: D(1800), easing: 'ease-in-out' });
+});
+const wild = document.querySelector('[data-wild]');
+let turns = 0;
+document.querySelector('[data-run-wild]').addEventListener('click', () => {
+  const current = getComputedStyle(wild).transform;
+  turns += 1;
+  wild.getAnimations().forEach((a) => a.cancel());
+  wild.animate([{ transform: current === 'none' ? 'rotate(0)' : current }, { transform: `rotate(${turns * 180}deg)` }], { duration: D(700), easing: 'cubic-bezier(.2, 1.2, .3, 1)', fill: 'forwards' });
+});
+const menu = document.querySelector('[data-menu]');
+const mb = document.querySelector('[data-menu-btn]');
+mb.addEventListener('click', () => { const o = !menu.classList.contains('is-open'); menu.classList.toggle('is-open', o); mb.setAttribute('aria-expanded', String(o)); mb.textContent = o ? 'Close menu' : 'Open menu'; });
+const st = document.querySelector('[data-state]');
+document.querySelector('[data-randomise]').addEventListener('click', () => {
+  st.style.transform = `translate(${(Math.random() - .5) * 120}px, ${(Math.random() - .5) * 40}px) rotate(${(Math.random() - .5) * 180}deg) scale(${.7 + Math.random() * .6})`;
+  st.style.borderRadius = `${Math.random() * 50}%`;
+  st.style.backgroundColor = `hsl(${Math.random() * 360} 80% 60%)`;
+});
+const slides = document.querySelector('[data-slides]');
+let idx = 0;
+const slide = (n) => { const s = document.createElement('div'); s.style.cssText = `position:absolute;inset:0;display:grid;place-items:center;font:800 40px/1 system-ui;color:#111;background:hsl(${n * 55} 80% 65%)`; s.textContent = n + 1; return s; };
+slides.append(slide(0));
+document.querySelectorAll('[data-dir]').forEach((b) => b.addEventListener('click', () => {
+  const dir = Number(b.dataset.dir);
+  idx += dir;
+  const old = slides.lastElementChild;
+  const next = slide(((idx % 7) + 7) % 7);
+  slides.append(next);
+  old.animate([{ transform: 'none' }, { transform: `translateX(${-dir * 100}%)` }], { duration: D(450), easing: 'cubic-bezier(.6, 0, .2, 1)', fill: 'forwards' }).onfinish = () => old.remove();
+  next.animate([{ transform: `translateX(${dir * 100}%)` }, { transform: 'none' }], { duration: D(450), easing: 'cubic-bezier(.6, 0, .2, 1)' });
+}));
+</script>
+</body>
+</html>

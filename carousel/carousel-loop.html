@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Infinite carousel</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; gap: 20px; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.opts { display: flex; gap: 14px; justify-content: center; color: var(--muted); font-size: 14px; }
+.opts label { display: inline-flex; gap: 6px; align-items: center; }
+</style>
+<style id="effect">
+.loop { --w: 300px; --h: 220px; --gap: 16px; position: relative; width: min(92vw, 980px); height: calc(var(--h) + 20px); overflow: hidden; touch-action: pan-y; cursor: grab; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.loop.is-vertical { width: calc(var(--w) + 20px); height: min(70vh, 640px); justify-self: center; touch-action: pan-x; -webkit-mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent); }
+.loop.is-dragging { cursor: grabbing; }
+.loop__item { position: absolute; left: 10px; top: 10px; width: var(--w); height: var(--h); border-radius: 16px; display: grid; place-items: end start; padding: 18px; font: 800 34px/1 system-ui, sans-serif; color: rgba(255, 255, 255, .92); will-change: transform; -webkit-user-select: none; user-select: none; }
+.loop__bar { width: min(92vw, 980px); height: 3px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.loop__bar i { display: block; height: 100%; background: var(--accent); transform-origin: 0 50%; transform: scaleX(var(--t, 0)); }
+</style>
+</head>
+<body>
+<div class="opts">
+  <label><input type="checkbox" data-vertical> Vertical</label>
+  <label><input type="checkbox" data-auto checked> Autoplay</label>
+</div>
+<div class="loop" data-loop tabindex="0" aria-roledescription="carousel" aria-label="Endless gallery"></div>
+<div class="loop__bar" aria-hidden="true"><i data-bar></i></div>
+<script>
+const root = document.querySelector('[data-loop]');
+const bar = document.querySelector('[data-bar]');
+const N = 8;
+const items = Array.from({ length: N }, (_, i) => {
+  const el = document.createElement('div');
+  const h = (i * 45 + 200) % 360;
+  el.className = 'loop__item';
+  el.style.background = `linear-gradient(150deg, hsl(${h} 80% 62%), hsl(${(h + 60) % 360} 70% 28%))`;
+  el.textContent = String(i + 1).padStart(2, '0');
+  root.append(el);
+  return el;
+});
+let vertical = false;
+let auto = true;
+let offset = 0, target = 0, vel = 0;
+const size = () => (vertical ? items[0].offsetHeight : items[0].offsetWidth) + 16;
+const total = () => size() * N;
+const mod = (a, n) => ((a % n) + n) % n;
+const render = () => {
+  const s = size(), t = total();
+  items.forEach((el, i) => {
+    const pos = mod(i * s - offset + s, t) - s;
+    el.style.transform = vertical ? `translate3d(0, ${pos}px, 0)` : `translate3d(${pos}px, 0, 0)`;
+  });
+};
+let drag = null;
+root.addEventListener('pointerdown', (e) => {
+  drag = { p: vertical ? e.clientY : e.clientX, start: target, t: performance.now(), v: 0, last: vertical ? e.clientY : e.clientX };
+  root.setPointerCapture(e.pointerId);
+  root.classList.add('is-dragging');
+});
+root.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  const p = vertical ? e.clientY : e.clientX;
+  const now = performance.now();
+  drag.v = drag.v * .5 + ((p - drag.last) / Math.max(1, now - drag.t)) * .5;
+  drag.last = p;
+  drag.t = now;
+  target = drag.start - (p - drag.p);
+  offset = target;
+});
+const end = () => {
+  if (!drag) return;
+  const v = performance.now() - drag.t > 80 ? 0 : drag.v;
+  drag = null;
+  root.classList.remove('is-dragging');
+  const s = size();
+  target = Math.round((target - v * 260) / s) * s;
+  resetTimer();
+};
+root.addEventListener('pointerup', end);
+root.addEventListener('pointercancel', end);
+root.addEventListener('keydown', (e) => {
+  const next = vertical ? 'ArrowDown' : 'ArrowRight';
+  const prev = vertical ? 'ArrowUp' : 'ArrowLeft';
+  if (e.key !== next && e.key !== prev) return;
+  e.preventDefault();
+  target += e.key === next ? size() : -size();
+  resetTimer();
+});
+let timerStart = performance.now();
+const DUR = 3000;
+const resetTimer = () => { timerStart = performance.now(); };
+const tick = (now) => {
+  if (!drag) {
+    const f = -160 * (offset - target) - 22 * vel;
+    vel += f / 60;
+    offset += vel / 60;
+  }
+  render();
+  if (auto && !drag && !root.matches(':hover')) {
+    const t = Math.min(1, (now - timerStart) / DUR);
+    bar.style.setProperty('--t', t.toFixed(4));
+    if (t >= 1) { target += size(); resetTimer(); }
+  } else if (auto) { timerStart = now - Number(bar.style.getPropertyValue('--t') || 0) * DUR; }
+  requestAnimationFrame(tick);
+};
+document.querySelector('[data-vertical]').addEventListener('change', (e) => {
+  vertical = e.target.checked;
+  root.classList.toggle('is-vertical', vertical);
+  offset = target = 0;
+  vel = 0;
+});
+document.querySelector('[data-auto]').addEventListener('change', (e) => { auto = e.target.checked; bar.style.setProperty('--t', 0); resetTimer(); });
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) { auto = false; document.querySelector('[data-auto]').checked = false; }
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

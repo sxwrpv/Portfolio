@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Circular colour picker</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --text: #f4f4f5; --muted: #a1a1aa; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 18px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.chosen { font: 600 15px/1 ui-monospace, Menlo, monospace; color: var(--muted); }
+</style>
+<style id="effect">
+.cp { position: relative; width: 300px; height: 300px; border: 0; padding: 0; }
+.cp__dot { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; will-change: transform; box-shadow: 0 0 0 0 transparent; }
+.cp__dot[aria-checked="true"] { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--text); }
+.cp__dot:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; }
+.cp__swatch { position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 50%; transition: background-color .4s, transform .5s cubic-bezier(.2, 1.6, .3, 1); }
+.cp__swatch.is-pop { transform: scale(1.12); }
+</style>
+</head>
+<body>
+<div class="cp" data-cp role="radiogroup" aria-label="Colour"><div class="cp__swatch" data-swatch aria-hidden="true"></div></div>
+<p class="chosen" data-out></p>
+<script>
+const cp = document.querySelector('[data-cp]');
+const swatch = cp.querySelector('[data-swatch]');
+const out = document.querySelector('[data-out]');
+const N = 18, R = 120;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const dots = Array.from({ length: N }, (_, i) => {
+  const a = (i / N) * Math.PI * 2 - Math.PI / 2;
+  const color = `hsl(${Math.round((i / N) * 360)} 85% 60%)`;
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'cp__dot'; b.style.background = color;
+  b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', 'false'); b.setAttribute('aria-label', color); b.tabIndex = -1;
+  cp.append(b);
+  const d = { el: b, hx: Math.cos(a) * R, hy: Math.sin(a) * R, x: Math.cos(a) * R, y: Math.sin(a) * R, vx: 0, vy: 0, s: 1, vs: 0, color };
+  b.addEventListener('click', () => pick(i));
+  b.addEventListener('keydown', (e) => { const k = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (k) { e.preventDefault(); pick((i + k + N) % N); dots[(i + k + N) % N].el.focus(); } });
+  return d;
+});
+function pick(i) {
+  dots.forEach((d, k) => { d.el.setAttribute('aria-checked', String(k === i)); d.el.tabIndex = k === i ? 0 : -1; });
+  swatch.style.background = dots[i].color;
+  out.textContent = dots[i].color;
+  swatch.classList.remove('is-pop'); void swatch.offsetWidth; swatch.classList.add('is-pop');
+  setTimeout(() => swatch.classList.remove('is-pop'), 300);
+}
+let px = null, py = null;
+cp.addEventListener('pointermove', (e) => { const r = cp.getBoundingClientRect(); px = e.clientX - r.left - r.width / 2; py = e.clientY - r.top - r.height / 2; });
+cp.addEventListener('pointerleave', () => { px = py = null; });
+const frame = () => {
+  dots.forEach((d) => {
+    let tx = d.hx, ty = d.hy, ts = 1;
+    if (px !== null && !reduce) {
+      const dx = d.hx - px, dy = d.hy - py, dist = Math.hypot(dx, dy);
+      const f = Math.max(0, 1 - dist / 90);
+      tx += (dx / (dist || 1)) * f * 22;
+      ty += (dy / (dist || 1)) * f * 22;
+      ts = 1 + f * .45;
+    }
+    d.vx += (-200 * (d.x - tx) - 18 * d.vx) / 60; d.x += d.vx / 60;
+    d.vy += (-200 * (d.y - ty) - 18 * d.vy) / 60; d.y += d.vy / 60;
+    d.vs += (-300 * (d.s - ts) - 20 * d.vs) / 60; d.s += d.vs / 60;
+    d.el.style.transform = `translate(${d.x}px, ${d.y}px) scale(${d.s})`;
+  });
+  requestAnimationFrame(frame);
+};
+pick(0);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

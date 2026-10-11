@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Reveal text on hover</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 30px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.bar { display: flex; gap: 10px; }
+small { color: var(--muted); }
+h2 { font: 800 clamp(28px, 5vw, 52px)/1.1 system-ui, sans-serif; }
+</style>
+<style id="effect">
+.peek {
+  display: inline-grid; grid-template-columns: auto 0fr; align-items: center; gap: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--panel); color: var(--text); text-decoration: none; font-weight: 600;
+  transition: grid-template-columns .45s cubic-bezier(.2, .9, .25, 1.1), gap .45s, background-color .2s;
+}
+.peek__icon { width: 22px; height: 22px; display: grid; place-items: center; }
+.peek__label { min-width: 0; overflow: hidden; white-space: nowrap; opacity: 0; transition: opacity .25s; }
+.peek:hover, .peek:focus-visible { grid-template-columns: auto 1fr; gap: 10px; background: var(--accent); color: #111; }
+.peek:hover .peek__label, .peek:focus-visible .peek__label { opacity: 1; transition-delay: .08s; }
+.hidden-word { display: inline-grid; grid-template-columns: 0fr; vertical-align: bottom; transition: grid-template-columns .5s cubic-bezier(.2, .9, .25, 1); color: var(--accent); }
+.hidden-word > span { min-width: 0; overflow: hidden; white-space: pre; }
+h2:hover .hidden-word { grid-template-columns: 1fr; }
+@media (prefers-reduced-motion: reduce) { .peek, .peek__label, .hidden-word { transition: none; } }
+</style>
+</head>
+<body>
+<nav class="bar" aria-label="Quick actions">
+  <a class="peek" href="#"><span class="peek__icon" aria-hidden="true">☎</span><span class="peek__label">Say hello</span></a>
+  <a class="peek" href="#"><span class="peek__icon" aria-hidden="true">✉</span><span class="peek__label">Write a postcard</span></a>
+  <a class="peek" href="#"><span class="peek__icon" aria-hidden="true">⌖</span><span class="peek__label">Anywhere on Earth</span></a>
+</nav>
+<h2>We make <span class="hidden-word"><span>almost </span></span>anything move.</h2>
+<small>Hover the buttons and the heading</small>
+</body>
+</html>

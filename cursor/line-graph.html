@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Line graph with cursor annotation</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.card { width: min(92vw, 760px); padding: 22px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); }
+.head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.head b { font: 800 34px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.head span { color: var(--muted); }
+</style>
+<style id="effect">
+.graph { position: relative; height: 260px; touch-action: pan-y; }
+.graph svg { width: 100%; height: 100%; overflow: visible; }
+.graph__line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: graph-draw 1.6s cubic-bezier(.6, 0, .2, 1) forwards; }
+.graph__area { fill: url(#graph-fill); opacity: 0; animation: graph-fade .8s .8s forwards; }
+@keyframes graph-draw { to { stroke-dashoffset: 0; } }
+@keyframes graph-fade { to { opacity: 1; } }
+.graph__guide { position: absolute; left: 0; top: 0; bottom: 0; width: 1px; background: var(--line); transform: translateX(var(--gx)); opacity: 0; transition: opacity .2s; }
+.graph__dot { position: absolute; left: 0; top: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 5px rgba(255, 106, 61, .25); transform: translate(var(--gx), var(--gy)); opacity: 0; transition: opacity .2s; }
+.graph__tip { position: absolute; left: 0; top: -8px; padding: 6px 10px; border-radius: 8px; background: var(--text); color: var(--bg); font: 700 13px/1 system-ui, sans-serif; white-space: nowrap; transform: translate(calc(var(--gx) - 50%), calc(var(--gy) - 42px)); opacity: 0; transition: opacity .2s; }
+.graph.is-active .graph__guide, .graph.is-active .graph__dot, .graph.is-active .graph__tip { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .graph__line { animation: none; stroke-dashoffset: 0; } .graph__area { animation: none; opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="head"><b data-value>0</b><span data-date>Last 30 days</span></div>
+  <div class="graph" data-graph>
+    <svg data-svg viewBox="0 0 700 260" preserveAspectRatio="none" aria-label="Ideas sparked over the last 30 days"><defs><linearGradient id="graph-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6a3d" stop-opacity=".35"/><stop offset="1" stop-color="#ff6a3d" stop-opacity="0"/></linearGradient></defs><path class="graph__area" data-area/><path class="graph__line" data-line pathLength="1"/></svg>
+    <div class="graph__guide"></div><div class="graph__dot"></div><div class="graph__tip" data-tip></div>
+  </div>
+</div>
+<script>
+const data = Array.from({ length: 30 }, (_, i) => Math.round(40 + Math.sin(i / 3) * 18 + i * 1.6 + Math.random() * 14));
+const W = 700, H = 260, PAD = 14;
+const max = Math.max(...data) * 1.1, min = Math.min(...data) * .8;
+const pts = data.map((v, i) => [(i / (data.length - 1)) * W, H - PAD - ((v - min) / (max - min)) * (H - PAD * 2)]);
+const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+document.querySelector('[data-line]').setAttribute('d', d);
+document.querySelector('[data-area]').setAttribute('d', `${d} L${W} ${H} L0 ${H} Z`);
+const graph = document.querySelector('[data-graph]');
+const valueEl = document.querySelector('[data-value]');
+const dateEl = document.querySelector('[data-date]');
+const tip = document.querySelector('[data-tip]');
+const total = data.reduce((a, b) => a + b, 0);
+let shown = 0, target = total, idx = -1, gx = 0, gy = 0, tx = 0, ty = 0;
+const day = (i) => new Date(Date.now() - (29 - i) * 864e5).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+graph.addEventListener('pointermove', (e) => {
+  const r = graph.getBoundingClientRect();
+  idx = Math.max(0, Math.min(data.length - 1, Math.round(((e.clientX - r.left) / r.width) * (data.length - 1))));
+  tx = (pts[idx][0] / W) * r.width;
+  ty = (pts[idx][1] / H) * r.height;
+  target = data[idx];
+  tip.textContent = `${data[idx]} ideas`;
+  dateEl.textContent = day(idx);
+  graph.classList.add('is-active');
+});
+graph.addEventListener('pointerleave', () => { graph.classList.remove('is-active'); target = total; dateEl.textContent = 'Last 30 days'; });
+let last = performance.now();
+const frame = (now) => {
+  const f = Math.min(3, Math.max(0, (now - last) / 16.667));
+  last = now;
+  shown += (target - shown) * (1 - Math.pow(.82, f));
+  valueEl.textContent = Math.round(shown).toLocaleString('en-US');
+  const k = 1 - Math.pow(.7, f);
+  gx += (tx - gx) * k; gy += (ty - gy) * k;
+  graph.style.setProperty('--gx', `${gx}px`);
+  graph.style.setProperty('--gy', `${gy}px`);
+  requestAnimationFrame(frame);
+};
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

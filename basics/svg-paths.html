@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>SVG paths: drawing, morphing, motion path, drag-linked</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; padding: 28px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+section { display: grid; gap: 14px; align-content: start; justify-items: center; padding: 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+h2 { justify-self: stretch; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.ctl { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+svg { width: 220px; height: 220px; overflow: visible; }
+</style>
+<style id="effect">
+.draw path, .draw circle, .draw line { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.draw.is-on > * { animation: draw 1s cubic-bezier(.6, 0, .2, 1) forwards; animation-delay: calc(var(--i) * 180ms); }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.morph path { fill: var(--accent); }
+.track path { fill: none; stroke: var(--line); stroke-width: 3; stroke-dasharray: 6 8; }
+.rider { offset-path: path("M20 180 C 60 20, 160 20, 200 120 S 120 200, 60 120"); offset-rotate: auto; width: 26px; height: 16px; border-radius: 4px; background: var(--accent); position: absolute; left: 0; top: 0; animation: ride 3s cubic-bezier(.6, 0, .4, 1) infinite alternate; }
+@keyframes ride { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+.linked path { fill: none; stroke-width: 10; stroke-linecap: round; }
+@media (prefers-reduced-motion: reduce) { .rider { animation: none; offset-distance: 50%; } .draw.is-on > * { animation-duration: .01s; } }
+</style>
+</head>
+<body>
+<section><h2>Path drawing</h2>
+  <svg class="draw" data-draw viewBox="0 0 220 220" aria-label="Animated check mark"><circle cx="110" cy="110" r="80" pathLength="1" style="--i:0"/><path d="M72 112 l26 26 52 -56" pathLength="1" style="--i:1"/></svg>
+  <button class="ctl" type="button" data-redraw>Draw again</button>
+</section>
+<section><h2>Path morphing</h2>
+  <svg class="morph" viewBox="0 0 220 220" aria-hidden="true"><path data-morph/></svg>
+  <button class="ctl" type="button" data-morph-btn>Next shape</button>
+</section>
+<section><h2>Motion along a path</h2>
+  <div style="position:relative;width:220px;height:220px"><svg class="track" viewBox="0 0 220 220" aria-hidden="true"><path d="M20 180 C 60 20, 160 20, 200 120 S 120 200, 60 120"/></svg><div class="rider" aria-hidden="true"></div></div>
+</section>
+<section><h2>Drag linked to path length</h2>
+  <svg class="linked" viewBox="0 0 220 220" aria-hidden="true"><path d="M30 110 C 30 30, 190 30, 190 110 S 30 190, 30 110" stroke="#2a2a2e"/><path data-linked d="M30 110 C 30 30, 190 30, 190 110 S 30 190, 30 110" stroke="#ff6a3d" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg>
+  <input type="range" min="0" max="1" step=".001" value="0" data-len aria-label="Progress" style="width:200px;accent-color:#ff6a3d">
+</section>
+<script>
+const draw = document.querySelector('[data-draw]');
+const redraw = () => { draw.classList.remove('is-on'); void draw.getBoundingClientRect(); draw.classList.add('is-on'); };
+document.querySelector('[data-redraw]').addEventListener('click', redraw);
+redraw();
+const N = 48;
+const shape = (fn) => Array.from({ length: N }, (_, i) => fn((i / N) * Math.PI * 2));
+const SHAPES = [
+  shape((a) => [110 + Math.cos(a) * 80, 110 + Math.sin(a) * 80]),
+  shape((a) => { const r = 80 / Math.max(Math.abs(Math.cos(a)), Math.abs(Math.sin(a))); return [110 + Math.cos(a) * Math.min(r, 113), 110 + Math.sin(a) * Math.min(r, 113)]; }),
+  shape((a) => { const r = 50 + 38 * Math.cos(5 * a) ** 2; return [110 + Math.cos(a) * r, 110 + Math.sin(a) * r]; }),
+  shape((a) => { const t = a; const x = 16 * Math.sin(t) ** 3, y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)); return [110 + x * 5, 105 + y * 5]; }),
+];
+const toD = (pts) => `M${pts.map((p) => p.map((v) => v.toFixed(1)).join(' ')).join(' L')} Z`;
+const mp = document.querySelector('[data-morph]');
+let cur = SHAPES[0].map((p) => [...p]), si = 0, raf;
+mp.setAttribute('d', toD(cur));
+document.querySelector('[data-morph-btn]').addEventListener('click', () => {
+  si = (si + 1) % SHAPES.length;
+  const from = cur.map((p) => [...p]), to = SHAPES[si];
+  const start = performance.now(), dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 700;
+  cancelAnimationFrame(raf);
+  const ease = (t) => 1 - Math.pow(1 - t, 4);
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / dur), e = ease(t);
+    cur = from.map((p, i) => [p[0] + (to[i][0] - p[0]) * e, p[1] + (to[i][1] - p[1]) * e]);
+    mp.setAttribute('d', toD(cur));
+    if (t < 1) raf = requestAnimationFrame(step);
+  };
+  raf = requestAnimationFrame(step);
+});
+const linked = document.querySelector('[data-linked]');
+const len = document.querySelector('[data-len]');
+len.addEventListener('input', () => { linked.setAttribute('stroke-dashoffset', String(1 - len.value)); linked.setAttribute('stroke', `hsl(${20 + len.value * 200} 90% 60%)`); });
+</script>
+</body>
+</html>

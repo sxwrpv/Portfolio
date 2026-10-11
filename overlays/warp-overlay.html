@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Warp overlay</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #000; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; overflow: hidden; }
+.app { min-height: 100vh; padding: 40px 24px; display: grid; align-content: start; gap: 16px; background: #121214; }
+.app h1 { font-size: 34px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.cards div { height: 120px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+.app button { justify-self: start; padding: 12px 18px; border: 0; border-radius: 12px; background: var(--accent); color: #111; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+</style>
+<style id="effect">
+.warp-page { transform-origin: 50% 0; transition: transform .6s cubic-bezier(.2, .9, .25, 1), filter .6s, border-radius .6s, opacity .6s; }
+body.is-warped .warp-page { transform: perspective(1200px) translateY(28px) rotateX(10deg) scale(.9); border-radius: 22px; filter: blur(2px) brightness(.6); opacity: .9; overflow: hidden; }
+.warp-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; max-width: 640px; margin: 0 auto; height: 78vh; padding: 28px; border-radius: 26px 26px 0 0; background: var(--panel); border: 1px solid var(--line); transform: translateY(105%); transition: transform .6s cubic-bezier(.2, .9, .25, 1); display: grid; align-content: start; gap: 14px; }
+body.is-warped .warp-sheet { transform: none; }
+.warp-sheet button { justify-self: start; padding: 10px 16px; border: 0; border-radius: 10px; background: var(--line); color: var(--text); font: 600 15px/1 system-ui, sans-serif; cursor: pointer; }
+.warp-sheet p { color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .warp-page, .warp-sheet { transition: none; } }
+</style>
+</head>
+<body>
+<div class="warp-page app" data-page>
+  <h1>Your trips</h1>
+  <div class="cards"><div></div><div></div><div></div><div></div><div></div><div></div></div>
+  <button type="button" data-open>New trip</button>
+</div>
+<section class="warp-sheet" data-sheet role="dialog" aria-modal="true" aria-label="New trip" inert>
+  <h2>New trip</h2>
+  <p>The page behind tilts back and dims, so the sheet reads as a layer on top.</p>
+  <button type="button" data-close>Close</button>
+</section>
+<script>
+const sheet = document.querySelector('[data-sheet]');
+const page = document.querySelector('[data-page]');
+const set = (on) => {
+  document.body.classList.toggle('is-warped', on);
+  sheet.inert = !on;
+  page.inert = on;
+  (on ? sheet.querySelector('[data-close]') : document.querySelector('[data-open]')).focus();
+};
+document.querySelector('[data-open]').addEventListener('click', () => set(true));
+document.querySelector('[data-close]').addEventListener('click', () => set(false));
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.body.classList.contains('is-warped')) set(false); });
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Floating action button</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+p { color: var(--muted); }
+</style>
+<style id="effect">
+.fab { position: fixed; right: 24px; bottom: 24px; z-index: 20; display: grid; justify-items: end; gap: 12px; }
+.fab__main { width: 60px; height: 60px; border: 0; border-radius: 50%; background: var(--accent); color: #111; font: 400 32px/1 system-ui, sans-serif; cursor: pointer; box-shadow: 0 10px 30px rgba(255, 106, 61, .35); transition: transform var(--sd) var(--se), border-radius .3s; }
+.fab[data-open] .fab__main { transform: rotate(135deg); }
+.fab__list { display: grid; gap: 10px; justify-items: end; list-style: none; padding: 0; }
+.fab__item { display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(16px) scale(.6); pointer-events: none; transition: opacity .2s, transform var(--sd) var(--se); transition-delay: calc((var(--n) - var(--i)) * 30ms); }
+.fab[data-open] .fab__item { opacity: 1; transform: none; pointer-events: auto; transition-delay: calc(var(--i) * 45ms); }
+.fab__item a { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); color: var(--text); text-decoration: none; font-size: 20px; }
+.fab__label { padding: 6px 10px; border-radius: 8px; background: var(--text); color: var(--bg); font: 600 13px/1 system-ui, sans-serif; white-space: nowrap; opacity: 0; transform: translateX(8px); transition: opacity .2s, transform .3s; }
+.fab__item:hover .fab__label, .fab__item a:focus-visible + .fab__label, .fab[data-open] .fab__label { opacity: 1; transform: none; }
+.fab__item { flex-direction: row; }
+</style>
+</head>
+<body>
+<p>Open the button in the bottom-right corner</p>
+<div class="fab" data-fab>
+  <ul class="fab__list" id="fab-list" data-list></ul>
+  <button class="fab__main" type="button" aria-expanded="false" aria-controls="fab-list" aria-label="Contact options" data-main>+</button>
+</div>
+<script>
+function spring(stiffness = 380, damping = 20) {
+  const w0 = Math.sqrt(stiffness), z = damping / (2 * Math.sqrt(stiffness)), wd = w0 * Math.sqrt(Math.max(1e-6, 1 - z * z));
+  const x = (t) => (z < 1 ? 1 - Math.exp(-z * w0 * t) * (Math.cos(wd * t) + (z * w0 / wd) * Math.sin(wd * t)) : 1 - Math.exp(-w0 * t) * (1 + w0 * t));
+  let T = .1;
+  while (T < 5 && (Math.abs(1 - x(T)) > .001 || Math.abs(1 - x(T - .05)) > .001)) T += .02;
+  const pts = Array.from({ length: 41 }, (_, i) => +x((T * i) / 40).toFixed(4));
+  pts[40] = 1;
+  return { easing: `linear(${pts.join(', ')})`, duration: Math.round(T * 1000) };
+}
+const fab = document.querySelector('[data-fab]');
+const s = spring();
+fab.style.setProperty('--se', s.easing);
+fab.style.setProperty('--sd', `${s.duration}ms`);
+const ACTIONS = [['💬', 'Message', '#'], ['📸', 'Share a moment', '#'], ['✉', 'Email', 'mailto:hello@example.com'], ['🎲', 'Surprise me', '#']];
+const list = fab.querySelector('[data-list]');
+const main = fab.querySelector('[data-main]');
+list.style.setProperty('--n', ACTIONS.length);
+ACTIONS.slice().reverse().forEach(([icon, label, href], k) => {
+  const li = document.createElement('li');
+  li.className = 'fab__item';
+  li.style.setProperty('--i', ACTIONS.length - 1 - k);
+  li.innerHTML = `<span class="fab__label">${label}</span><a href="${href}" aria-label="${label}" tabindex="-1">${icon}</a>`;
+  list.append(li);
+});
+const set = (open) => {
+  fab.toggleAttribute('data-open', open);
+  main.setAttribute('aria-expanded', String(open));
+  list.querySelectorAll('a').forEach((a) => { a.tabIndex = open ? 0 : -1; });
+};
+main.addEventListener('click', () => set(!fab.hasAttribute('data-open')));
+document.addEventListener('click', (e) => { if (!fab.contains(e.target)) set(false); });
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && fab.hasAttribute('data-open')) { set(false); main.focus(); } });
+</script>
+</body>
+</html>

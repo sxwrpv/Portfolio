@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Physical stagger grid and infinite list</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 30px; align-items: start; padding: 32px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+h2 { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+</style>
+<style id="effect">
+.pgrid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; width: 100%; max-width: 440px; }
+.pgrid button { aspect-ratio: 1; border: 0; border-radius: 6px; background: var(--line); cursor: pointer; padding: 0; }
+.ilist { height: 420px; overflow-y: auto; display: grid; gap: 10px; align-content: start; padding-right: 4px; }
+.ilist__item { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); animation: il-in .5s cubic-bezier(.2, 1, .3, 1) both; animation-delay: calc(var(--i) * 60ms); }
+@keyframes il-in { from { opacity: 0; transform: translateY(16px); } }
+.ilist__thumb { width: 44px; height: 44px; border-radius: 10px; flex: none; }
+.ilist__skel { height: 70px; border-radius: 14px; background: linear-gradient(90deg, var(--panel) 30%, #232327 50%, var(--panel) 70%) 0 0 / 300% 100%; animation: il-shine 1.2s linear infinite; }
+@keyframes il-shine { to { background-position: -150% 0; } }
+@media (prefers-reduced-motion: reduce) { .ilist__item, .ilist__skel { animation: none; } }
+</style>
+</head>
+<body>
+<section><h2>Physical stagger · click any cell</h2><div class="pgrid" data-pgrid></div></section>
+<section><h2>Infinite loading · scroll inside</h2><div class="ilist" data-ilist tabindex="0" aria-label="Jobs" aria-busy="false"></div></section>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const grid = document.querySelector('[data-pgrid]');
+const COLS = 10;
+const cells = Array.from({ length: 100 }, (_, i) => { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', `Cell ${i + 1}`); b.addEventListener('click', () => wave(i)); grid.append(b); return b; });
+let hue = 20;
+function wave(origin) {
+  hue = (hue + 70) % 360;
+  const ox = origin % COLS, oy = Math.floor(origin / COLS);
+  cells.forEach((c, i) => {
+    const d = Math.hypot(i % COLS - ox, Math.floor(i / COLS) - oy);
+    c.animate([{ transform: 'scale(1)', background: getComputedStyle(c).backgroundColor }, { transform: 'scale(.4)', offset: .35 }, { transform: 'scale(1)', background: `hsl(${hue} 80% ${60 - d * 2}%)` }], { duration: reduce ? 0 : 700, delay: reduce ? 0 : d * 45, easing: 'cubic-bezier(.2, .9, .3, 1.2)', fill: 'forwards' });
+  });
+}
+const list = document.querySelector('[data-ilist]');
+let page = 0, loading = false;
+function load() {
+  if (loading || page >= 6) return;
+  loading = true;
+  list.setAttribute('aria-busy', 'true');
+  const skels = Array.from({ length: 3 }, () => { const s = document.createElement('div'); s.className = 'ilist__skel'; list.append(s); return s; });
+  setTimeout(() => {
+    skels.forEach((s) => s.remove());
+    for (let i = 0; i < 6; i++) {
+      const n = page * 6 + i + 1;
+      const el = document.createElement('div');
+      el.className = 'ilist__item';
+      el.style.setProperty('--i', i);
+      el.innerHTML = `<span class="ilist__thumb" style="background:hsl(${n * 23} 70% 58%)"></span><div><b>Job #${n}</b><br><small style="color:var(--muted)">Completed · ${(n % 5) + 1} km away</small></div>`;
+      list.append(el);
+    }
+    page++;
+    loading = false;
+    list.setAttribute('aria-busy', 'false');
+    if (list.scrollHeight <= list.clientHeight) load();
+  }, 800);
+}
+list.addEventListener('scroll', () => { if (list.scrollTop + list.clientHeight > list.scrollHeight - 80) load(); }, { passive: true });
+load();
+</script>
+</body>
+</html>

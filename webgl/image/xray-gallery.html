@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>X-ray gallery</title>
+<style id="page">
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body { overflow: hidden; background: #000; color: #fff; font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+canvas[data-gl] { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.dock { position: fixed; left: 16px; bottom: 16px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; }
+.dock button, .dock label { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, .28); border-radius: 999px; background: rgba(10, 10, 12, .5); color: #fff; font: 500 13px/1 system-ui, sans-serif; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.dock input[type=file] { display: none; }
+.dock input[type=color] { width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
+.gl-fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: #aaa; }
+.embed .dock, .embed .hint { display: none !important; }
+.embed canvas[data-gl] { touch-action: pan-y; }
+body { background: #14170f; }
+canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+canvas.is-drag { cursor: grabbing; }
+.hint { position: fixed; right: 16px; bottom: 16px; font: 500 11px/1 Menlo, monospace; color: #7c8270; letter-spacing: .08em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<canvas data-gl></canvas>
+<canvas data-c></canvas>
+<p class="hint">Drag the cards · drop an image on a card</p>
+<script>
+function shader(opt = {}) {
+  const canvas = typeof opt.canvas === 'string' ? document.querySelector(opt.canvas) : opt.canvas || document.querySelector('canvas[data-gl]');
+  const gl = canvas.getContext('webgl2', { antialias: false, alpha: !!opt.alpha, premultipliedAlpha: false, preserveDrawingBuffer: !!opt.preserve, powerPreference: 'high-performance' });
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const embed = /[?&]embed\b/.test(location.search);
+  if (embed) document.documentElement.classList.add('embed');
+  if (!gl) {
+    const p = document.createElement('p');
+    p.className = 'gl-fallback';
+    p.textContent = 'WebGL 2 is not available in this browser.';
+    canvas.replaceWith(p);
+    return null;
+  }
+  const halfFloat = !!gl.getExtension('EXT_color_buffer_float');
+  const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
+  const pixelated = !!opt.pixelated;
+  const dens = (opt.dpr ?? (pixelated ? 1 : 2)) * (opt.scale ?? 1);
+  const adaptive = (opt.adaptive ?? !pixelated) && !reduce;
+  const qMin = opt.minQuality ?? Math.min(1, Math.max(.3, .75 / dens));
+  let raf = 0, cssW = 0, cssH = 0, cw = 0, ch = 0, W1 = 0, H1 = 0, W = 0, H = 0, q = 1, fade = opt.fade !== false && !reduce && !embed ? -1 : 0, lost = false;
+  let time = +(new URLSearchParams(location.search).get('t') ?? opt.start ?? 0), last = performance.now(), frame = 0, visible = true, paused = false, speed = 1;
+  const HEAD = `#version 300 es
+precision highp float;
+precision highp int;
+uniform vec2 uRes;
+uniform vec2 uView;
+uniform float uPx;
+uniform float uTime;
+uniform float uDt;
+uniform int uFrame;
+uniform vec2 uMouse;
+uniform vec2 uMouseRaw;
+uniform vec2 uMouseLast;
+uniform vec2 uVel;
+uniform float uDown;
+uniform float uHover;
+uniform sampler2D uPrev;
+in vec2 vUv;
+out vec4 o;
+`;
+  const compile = (type, code) => {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, code);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+      const log = gl.getShaderInfoLog(sh);
+      console.error(log + '\n' + code.split('\n').map((l, i) => `${i + 1}: ${l}`).join('\n'));
+      throw new Error('Shader compile failed: ' + log);
+    }
+    return sh;
+  };
+  const vs = compile(gl.VERTEX_SHADER, '#version 300 es\nin vec2 p;\nout vec2 vUv;\nvoid main() { vUv = p * .5 + .5; gl_Position = vec4(p, 0., 1.); }');
+  const source = (s) => {
+    const el = /^[\w-]+$/.test(s) ? document.getElementById(s) : null;
+    return el ? el.textContent : s;
+  };
+  const link = (code) => {
+    const p = gl.createProgram();
+    gl.attachShader(p, vs);
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, code));
+    gl.bindAttribLocation(p, 0, 'p');
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    const u = {};
+    const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < n; i++) {
+      const a = gl.getActiveUniform(p, i);
+      u[a.name.replace(/\[0\]$/, '')] = { loc: gl.getUniformLocation(p, a.name), type: a.type };
+    }
+    return { p, u };
+  };
+  const program = (fs) => link(HEAD + source(fs));
+  const present = link(`#version 300 es
+precision highp float;
+uniform sampler2D uSrc;
+uniform vec2 uSrcSize;
+uniform int uMode;
+in vec2 vUv;
+out vec4 o;
+vec4 cubic(vec2 uv) {
+  vec2 sp = uv * uSrcSize - .5, tp = floor(sp) + .5, f = sp - floor(sp);
+  vec2 w0 = f * (-.5 + f * (1. - .5 * f)), w1 = 1. + f * f * (-2.5 + 1.5 * f), w2 = f * (.5 + f * (2. - 1.5 * f)), w3 = f * f * (-.5 + .5 * f);
+  vec2 w12 = w1 + w2, t0 = (tp - 1.) / uSrcSize, t3 = (tp + 2.) / uSrcSize, t12 = (tp + w2 / w12) / uSrcSize;
+  vec4 r = (texture(uSrc, vec2(t0.x, t0.y)) * w0.x + texture(uSrc, vec2(t12.x, t0.y)) * w12.x + texture(uSrc, vec2(t3.x, t0.y)) * w3.x) * w0.y
+    + (texture(uSrc, vec2(t0.x, t12.y)) * w0.x + texture(uSrc, vec2(t12.x, t12.y)) * w12.x + texture(uSrc, vec2(t3.x, t12.y)) * w3.x) * w12.y
+    + (texture(uSrc, vec2(t0.x, t3.y)) * w0.x + texture(uSrc, vec2(t12.x, t3.y)) * w12.x + texture(uSrc, vec2(t3.x, t3.y)) * w3.x) * w3.y;
+  return max(r, 0.);
+}
+float h(vec2 p) { vec3 q = fract(vec3(p.xyx) * .1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+void main() {
+  vec4 c = uMode == 2 ? texelFetch(uSrc, ivec2(min(vUv * uSrcSize, uSrcSize - 1.)), 0) : uMode == 1 ? cubic(vUv) : texture(uSrc, vUv);
+  c.rgb += (h(gl_FragCoord.xy) + h(gl_FragCoord.xy + 71.3) - 1.) / 255.;
+  o = c;
+}`);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+  const makeTex = (filter, wrap, mips) => {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    const f = filter === 'nearest' ? gl.NEAREST : gl.LINEAR;
+    const w = wrap === 'repeat' ? gl.REPEAT : wrap === 'mirror' ? gl.MIRRORED_REPEAT : gl.CLAMP_TO_EDGE;
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mips ? (f === gl.NEAREST ? gl.NEAREST_MIPMAP_LINEAR : gl.LINEAR_MIPMAP_LINEAR) : f);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, w);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, w);
+    if (mips && aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+    return t;
+  };
+  const blank = makeTex();
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+  const textures = {};
+  const upload = (t) => {
+    const s = t.source;
+    if (!s) return;
+    if (s instanceof HTMLVideoElement && s.readyState < 2) return;
+    if (s instanceof HTMLImageElement && !s.complete) return;
+    gl.bindTexture(gl.TEXTURE_2D, t.tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, s);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    if (t.mips) gl.generateMipmap(gl.TEXTURE_2D);
+    t.size = [s.videoWidth || s.naturalWidth || s.width, s.videoHeight || s.naturalHeight || s.height];
+    t.ready = true;
+    t.dirty = false;
+  };
+  const tex = (name, src, o = {}) => {
+    const t = textures[name] || (textures[name] = { tex: makeTex(o.filter, o.wrap, o.mips) });
+    if (o.filter || o.wrap || o.mips !== undefined) {
+      gl.deleteTexture(t.tex);
+      t.tex = makeTex(o.filter, o.wrap, o.mips);
+      t.mips = !!o.mips;
+    }
+    t.source = src;
+    t.dynamic = o.dynamic ?? src instanceof HTMLVideoElement;
+    if (src instanceof HTMLImageElement && !src.complete) src.addEventListener('load', () => { t.dirty = true; kick(); }, { once: true });
+    upload(t);
+    kick();
+    return t;
+  };
+  Object.entries(opt.textures || {}).forEach(([k, v]) => (v && v.source !== undefined ? tex(k, v.source, v) : tex(k, v)));
+
+  const passes = (opt.passes || [{ fs: opt.fs || 'main' }]).map((c, i) => ({ ...c, id: c.id || `pass${i}`, prog: program(c.fs), fbo: [], cur: 0, out: blank, w: 0, h: 0 }));
+  const fin = passes[passes.length - 1];
+  if (!fin.offscreen) {
+    fin.float = fin.float ?? true;
+    if (pixelated) fin.filter = 'nearest';
+  }
+  const makeTarget = (w, h, ps) => {
+    const t = makeTex(ps.filter, ps.wrap);
+    const float = ps.float && halfFloat;
+    gl.texImage2D(gl.TEXTURE_2D, 0, float ? gl.RGBA16F : gl.RGBA8, w, h, 0, gl.RGBA, float ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE, null);
+    const fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    gl.viewport(0, 0, w, h);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    return { tex: t, fb };
+  };
+  const alloc = (ps) => {
+    const s = ps.size ?? 1;
+    const [w, h] = (typeof s === 'function' ? s(W, H) : Array.isArray(s) ? s : [W * s, H * s]).map((x) => Math.max(1, Math.round(x)));
+    if (ps.fbo.length && ps.w === w && ps.h === h) return;
+    const old = ps.fbo, ow = ps.w, oh = ps.h;
+    ps.fbo = Array.from({ length: ps.feedback ? 2 : 1 }, () => makeTarget(w, h, ps));
+    if (old.length && ps.feedback && ps.keep !== false) {
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, old[ps.cur].fb);
+      for (const f of ps.fbo) {
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, f.fb);
+        gl.blitFramebuffer(0, 0, ow, oh, 0, 0, w, h, gl.COLOR_BUFFER_BIT, gl.LINEAR);
+      }
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    }
+    old.forEach((f) => { gl.deleteTexture(f.tex); gl.deleteFramebuffer(f.fb); });
+    ps.w = w;
+    ps.h = h;
+    ps.cur = 0;
+    ps.out = ps.fbo[0].tex;
+  };
+
+  const values = { ...(opt.uniforms || {}) };
+  const hex = (s) => {
+    const n = parseInt(s.slice(1), 16);
+    return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
+  };
+  const setUniform = (u, v) => {
+    if (typeof v === 'function') v = v();
+    const a = typeof v === 'string' ? hex(v) : Array.isArray(v) ? v.flat(2).map((x) => (typeof x === 'string' ? hex(x) : x)).flat() : [+v];
+    switch (u.type) {
+      case gl.FLOAT: gl.uniform1fv(u.loc, a); break;
+      case gl.FLOAT_VEC2: gl.uniform2fv(u.loc, a); break;
+      case gl.FLOAT_VEC3: gl.uniform3fv(u.loc, a); break;
+      case gl.FLOAT_VEC4: gl.uniform4fv(u.loc, a); break;
+      case gl.INT: case gl.BOOL: gl.uniform1iv(u.loc, a.map((x) => Math.round(x))); break;
+      case gl.FLOAT_MAT2: gl.uniformMatrix2fv(u.loc, false, a); break;
+      case gl.FLOAT_MAT3: gl.uniformMatrix3fv(u.loc, false, a); break;
+      case gl.FLOAT_MAT4: gl.uniformMatrix4fv(u.loc, false, a); break;
+    }
+  };
+
+  const m = { x: .5, y: .5, rx: .5, ry: .5, px: .5, py: .5, lx: .5, ly: .5, ux: .5, uy: .5, vx: 0, vy: 0, down: 0, inside: 0, h: 0, moved: -1e9, auto: false };
+  const toLocal = (e) => {
+    const r = canvas.getBoundingClientRect();
+    m.rx = (e.clientX - r.left) / r.width;
+    m.ry = 1 - (e.clientY - r.top) / r.height;
+    m.inside = m.rx >= 0 && m.rx <= 1 && m.ry >= 0 && m.ry <= 1 ? 1 : 0;
+    m.moved = performance.now();
+    m.auto = false;
+    kick();
+  };
+  addEventListener('pointermove', toLocal, { passive: true });
+  addEventListener('pointerdown', (e) => { toLocal(e); m.down = 1; });
+  addEventListener('pointerup', () => { m.down = 0; });
+  addEventListener('pointercancel', () => { m.down = 0; });
+  document.documentElement.addEventListener('pointerleave', () => { m.inside = 0; });
+
+  const still = opt.still ?? 2;
+  if (reduce) time = still;
+  const g = { ema: 16.7, run: 0, changed: 0, wait: 2000, probe: 0 };
+  const fit = () => {
+    W1 = Math.max(1, Math.round(cssW * dens));
+    H1 = Math.max(1, Math.round(cssH * dens));
+    W = Math.max(1, Math.round(W1 * q));
+    H = Math.max(1, Math.round(H1 * q));
+    passes.forEach(alloc);
+  };
+  const setQ = (v, now) => {
+    q = v;
+    g.changed = now;
+    g.run = 0;
+    g.ema = 16.7;
+    fit();
+  };
+  function govern(ms, now) {
+    if (!adaptive) return;
+    if (ms > 250) { g.run = 0; return; }
+    if (++g.run < 6) return;
+    g.ema += (ms - g.ema) * .1;
+    if (now - g.changed < 700) return;
+    if (g.ema > 21 && q > qMin) {
+      if (g.probe && now - g.probe < 3500) g.wait = Math.min(g.wait * 2, 40000);
+      g.probe = 0;
+      setQ(Math.max(qMin, q * Math.min(.92, Math.max(.66, Math.sqrt(16 / g.ema)))), now);
+    } else if (q < 1 && g.ema < 17.6 && now - g.changed > g.wait) {
+      g.probe = now;
+      setQ(Math.min(1, q * 1.15), now);
+    }
+  }
+  function resize(entries) {
+    if (lost) return;
+    const r = canvas.getBoundingClientRect();
+    const box = entries?.[0]?.devicePixelContentBoxSize?.[0];
+    const d = devicePixelRatio || 1;
+    const dw = Math.max(1, box ? box.inlineSize : Math.round(r.width * d)), dh = Math.max(1, box ? box.blockSize : Math.round(r.height * d));
+    if (dw === cw && dh === ch && r.width === cssW && r.height === cssH) return;
+    cssW = Math.max(1, r.width);
+    cssH = Math.max(1, r.height);
+    cw = canvas.width = dw;
+    ch = canvas.height = dh;
+    const pw = W1, ph = H1;
+    if (!pw && adaptive) q = Math.max(qMin, Math.min(1, Math.sqrt((opt.budget ?? 8e6) / (cssW * cssH * dens * dens))));
+    fit();
+    if (W1 !== pw || H1 !== ph) opt.onResize?.(W1, H1, ctl);
+    if (!pw) kick();
+    else if (visible && !paused) {
+      if (raf) cancelAnimationFrame(raf);
+      draw(performance.now(), true);
+    }
+  }
+  function draw(now, sync) {
+    raf = 0;
+    if (lost) return;
+    const ms = now - last;
+    const dt = Math.min(.05, Math.max(0, ms / 1000));
+    last = now;
+    if (!sync) govern(ms, now);
+    if (!reduce) time += dt * speed;
+    const idle = (now - m.moved) / 1000;
+    if (opt.autoMouse && !reduce && idle > 2.5) {
+      if (!m.auto) {
+        m.ux = m.rx;
+        m.uy = m.ry;
+        m.auto = true;
+      }
+      const a = time * .55, w = Math.min(1, (idle - 2.5) / 2.2), e = w * w * (3 - 2 * w);
+      const ax = .5 + .32 * Math.sin(a * 1.3) * (opt.autoMouse.x ?? 1), ay = .5 + .26 * Math.sin(a * 2.1 + .6) * (opt.autoMouse.y ?? 1);
+      m.rx = m.ux + (ax - m.ux) * e;
+      m.ry = m.uy + (ay - m.uy) * e;
+    }
+    const k = 1 - Math.exp(-dt * (opt.mouseEase ?? 10)), kv = 1 - Math.exp(-dt * 14);
+    const vx = dt > 0 ? (m.rx - m.px) / dt : 0, vy = dt > 0 ? (m.ry - m.py) / dt : 0;
+    m.vx += (vx - m.vx) * kv;
+    m.vy += (vy - m.vy) * kv;
+    m.lx = m.px;
+    m.ly = m.py;
+    m.px = m.rx;
+    m.py = m.ry;
+    m.x += (m.rx - m.x) * k;
+    m.y += (m.ry - m.y) * k;
+    m.h += ((m.inside || m.auto ? 1 : 0) - m.h) * (1 - Math.exp(-dt * 7));
+    opt.onFrame?.(time, dt, ctl);
+    for (const t of Object.values(textures)) if (t.dynamic || t.dirty) upload(t);
+    passes.forEach((ps) => {
+      if (ps.skip?.(time)) return;
+      let iters = ps.iterations || 1;
+      if (ps.hz) {
+        ps.acc = Math.min(4, (ps.acc ?? 1) + dt * ps.hz * (reduce ? 0 : speed));
+        iters = Math.floor(ps.acc);
+        ps.acc -= iters;
+        if (!iters && frame < 2) iters = 1;
+      }
+      for (let it = 0; it < iters; it++) {
+        const read = ps.feedback ? ps.fbo[ps.cur] : null;
+        const write = ps.feedback ? ps.fbo[1 - ps.cur] : ps.fbo[0];
+        gl.bindFramebuffer(gl.FRAMEBUFFER, write.fb);
+        gl.viewport(0, 0, ps.w, ps.h);
+        gl.useProgram(ps.prog.p);
+        let unit = 0;
+        for (const [name, u] of Object.entries(ps.prog.u)) {
+          if (u.type === gl.SAMPLER_2D) {
+            const ref = ps.inputs?.[name] ?? name;
+            const other = passes.find((p) => p.id === ref);
+            const t = name === 'uPrev' ? (read ? read.tex : blank) : other ? other.out : textures[ref]?.ready ? textures[ref].tex : blank;
+            gl.activeTexture(gl.TEXTURE0 + unit);
+            gl.bindTexture(gl.TEXTURE_2D, t);
+            gl.uniform1i(u.loc, unit++);
+            continue;
+          }
+          switch (name) {
+            case 'uRes': gl.uniform2f(u.loc, ps.w, ps.h); break;
+            case 'uView': gl.uniform2f(u.loc, W, H); break;
+            case 'uPx': gl.uniform1f(u.loc, ps.w / cssW); break;
+            case 'uTime': gl.uniform1f(u.loc, time); break;
+            case 'uDt': gl.uniform1f(u.loc, dt); break;
+            case 'uFrame': gl.uniform1i(u.loc, frame); break;
+            case 'uMouse': gl.uniform2f(u.loc, m.x, m.y); break;
+            case 'uMouseRaw': gl.uniform2f(u.loc, m.rx, m.ry); break;
+            case 'uMouseLast': gl.uniform2f(u.loc, m.lx, m.ly); break;
+            case 'uVel': gl.uniform2f(u.loc, m.vx, m.vy); break;
+            case 'uDown': gl.uniform1f(u.loc, m.down); break;
+            case 'uHover': gl.uniform1f(u.loc, m.h); break;
+            default: {
+              const ref = name.endsWith('Size') && (ps.inputs?.[name.slice(0, -4)] ?? name.slice(0, -4));
+              const t = ref && textures[ref];
+              const p = ref && passes.find((x) => x.id === ref);
+              if (t) gl.uniform2fv(u.loc, t.size || [1, 1]);
+              else if (p) gl.uniform2f(u.loc, p.w || W, p.h || H);
+              else if (ps.uniforms && name in ps.uniforms) setUniform(u, ps.uniforms[name]);
+              else if (name in values) setUniform(u, values[name]);
+            }
+          }
+        }
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (ps.feedback) {
+          ps.cur = 1 - ps.cur;
+          ps.out = ps.fbo[ps.cur].tex;
+        }
+      }
+    });
+    if (!fin.offscreen) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, cw, ch);
+      gl.useProgram(present.p);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, fin.out);
+      gl.uniform1i(present.u.uSrc.loc, 0);
+      gl.uniform2f(present.u.uSrcSize.loc, fin.w, fin.h);
+      gl.uniform1i(present.u.uMode.loc, pixelated ? 2 : fin.w < cw * .98 ? 1 : 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+    frame++;
+    if (embed && frame === 3 && parent !== window) parent.postMessage('mk-ready', '*');
+    if (fade) {
+      if (fade < 0) fade = now;
+      const f = Math.min(1, (now - fade) / 900);
+      canvas.style.opacity = f < 1 ? (1 - (1 - f) ** 3).toFixed(3) : '';
+      if (f >= 1) fade = 0;
+    }
+    if (visible && !paused && !(reduce && !opt.alwaysRun && now - m.moved > 1500 && frame > 2)) raf = requestAnimationFrame((t) => draw(t));
+  }
+  function kick() {
+    if (!raf && visible && !paused && !lost && W) {
+      last = performance.now();
+      g.run = 0;
+      raf = requestAnimationFrame((t) => draw(t));
+    }
+  }
+  const ctl = {
+    gl, canvas, textures, passes, mouse: m, reduce,
+    set(name, v) { values[name] = v; kick(); },
+    get(name) { return values[name]; },
+    tex,
+    time: () => time,
+    setTime(t) { time = t; kick(); },
+    speed(s) { speed = s; },
+    pause() { paused = true; },
+    play() { paused = false; kick(); },
+    quality: () => q,
+    resize: () => resize(),
+    kick,
+  };
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); lost = true; });
+  canvas.addEventListener('webglcontextrestored', () => location.reload());
+  if (fade) canvas.style.opacity = '0';
+  const ro = new ResizeObserver(resize);
+  try { ro.observe(canvas, { box: 'device-pixel-content-box' }); } catch (e) { ro.observe(canvas); }
+  new IntersectionObserver(([e]) => { visible = e.isIntersecting; kick(); }).observe(canvas);
+  resize();
+  if (opt.drop) fileSwap(ctl, opt.drop);
+  return ctl;
+}
+
+function bloom(src, levels = 5, radius = 1) {
+  const down = `uniform sampler2D uSrc;
+uniform vec2 uSrcSize;
+uniform float uFirst;
+vec3 tap(vec2 uv) { vec3 c = texture(uSrc, uv).rgb; return uFirst > .5 ? c / (1. + max(c.r, max(c.g, c.b)) / 24.) : c; }
+void main() {
+  vec2 t = 1. / uSrcSize, uv = vUv;
+  vec3 a = tap(uv + t * vec2(-2, 2)), b = tap(uv + t * vec2(0, 2)), c = tap(uv + t * vec2(2, 2));
+  vec3 d = tap(uv + t * vec2(-2, 0)), e = tap(uv), f = tap(uv + t * vec2(2, 0));
+  vec3 g = tap(uv + t * vec2(-2, -2)), h = tap(uv + t * vec2(0, -2)), i = tap(uv + t * vec2(2, -2));
+  vec3 j = tap(uv + t * vec2(-1, 1)), k = tap(uv + t * vec2(1, 1)), l = tap(uv + t * vec2(-1, -1)), m = tap(uv + t * vec2(1, -1));
+  o = vec4(e * .125 + (a + c + g + i) * .03125 + (b + d + f + h) * .0625 + (j + k + l + m) * .125, 1);
+}`;
+  const up = `uniform sampler2D uSrc;
+uniform sampler2D uAdd;
+uniform vec2 uSrcSize;
+uniform float uRadius;
+void main() {
+  vec2 t = uRadius / uSrcSize;
+  vec3 s = texture(uSrc, vUv + t * vec2(-1, 1)).rgb + texture(uSrc, vUv + t * vec2(1, 1)).rgb + texture(uSrc, vUv + t * vec2(-1, -1)).rgb + texture(uSrc, vUv + t * vec2(1, -1)).rgb;
+  s += 2. * (texture(uSrc, vUv + t * vec2(0, 1)).rgb + texture(uSrc, vUv + t * vec2(0, -1)).rgb + texture(uSrc, vUv + t * vec2(-1, 0)).rgb + texture(uSrc, vUv + t * vec2(1, 0)).rgb);
+  o = vec4((s + 4. * texture(uSrc, vUv).rgb) / 16. + texture(uAdd, vUv).rgb, 1);
+}`;
+  const p = [];
+  for (let i = 1; i <= levels; i++) p.push({ id: `uB${i}`, fs: down, size: 2 ** -i, float: true, inputs: { uSrc: i === 1 ? src : `uB${i - 1}` }, uniforms: { uFirst: i === 1 ? 1 : 0 } });
+  for (let i = levels - 1; i >= 1; i--) p.push({ id: i === 1 ? 'uBloom' : `uU${i}`, fs: up, size: 2 ** -i, float: true, inputs: { uSrc: i === levels - 1 ? `uB${levels}` : `uU${i + 1}`, uAdd: `uB${i}` }, uniforms: { uRadius: radius } });
+  return p;
+}
+
+function paint(w, h, fn, el) {
+  const c = el || document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w));
+  c.height = Math.max(1, Math.round(h));
+  const ctx = c.getContext('2d');
+  fn(ctx, c.width, c.height);
+  return c;
+}
+
+function fitFont(ctx, lines, maxW, maxH, { weight = 800, family = 'system-ui, sans-serif', lh = 1, style = '' } = {}) {
+  lines = [].concat(lines);
+  let s = maxH / (lines.length * lh);
+  ctx.font = `${style} ${weight} ${s}px ${family}`;
+  const w = Math.max(...lines.map((l) => ctx.measureText(l).width));
+  if (w > maxW) s *= maxW / w;
+  ctx.font = `${style} ${weight} ${s}px ${family}`;
+  return s;
+}
+
+function glyphAtlas(chars = ' .:-=+*#%@', cell = 48, font = 'Menlo, ui-monospace, monospace') {
+  return paint(cell * chars.length, cell, (ctx, w, h) => {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${cell * .82}px ${font}`;
+    [...chars].forEach((ch, i) => ctx.fillText(ch, cell * (i + .5), h * .54));
+  });
+}
+
+function fileSwap(ctl, name, onLoad) {
+  const use = (file) => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    if (file.type.startsWith('video/')) {
+      const v = Object.assign(document.createElement('video'), { src: url, muted: true, loop: true, playsInline: true, autoplay: true });
+      v.play().catch(() => {});
+      ctl.tex(name, v, { dynamic: true });
+      onLoad?.(v);
+    } else {
+      const img = new Image();
+      img.onload = () => { ctl.tex(name, img); onLoad?.(img); };
+      img.src = url;
+    }
+  };
+  document.querySelectorAll('input[type=file][data-file]').forEach((i) => i.addEventListener('change', () => use(i.files[0])));
+  addEventListener('dragover', (e) => e.preventDefault());
+  addEventListener('drop', (e) => { e.preventDefault(); use(e.dataTransfer.files[0]); });
+}
+</script>
+<script>
+const cv = document.querySelector('[data-c]');
+const ctx = cv.getContext('2d');
+const art = [
+  (c, w, h) => { const g = c.createRadialGradient(w * .5, h * .5, 0, w * .5, h * .5, w * .5); g.addColorStop(0, '#fff2b0'); g.addColorStop(.3, '#ff9a2e'); g.addColorStop(.7, '#c92a12'); g.addColorStop(1, '#3a0d06'); c.fillStyle = g; c.fillRect(0, 0, w, h); for (let i = 0; i < 40; i++) { c.strokeStyle = `rgba(255,220,120,${Math.random() * .4})`; c.beginPath(); const a = Math.random() * 6.28; c.moveTo(w / 2, h / 2); c.lineTo(w / 2 + Math.cos(a) * w, h / 2 + Math.sin(a) * w); c.stroke(); } },
+  (c, w, h) => { c.fillStyle = '#1f9ad6'; c.fillRect(0, 0, w, h); c.fillStyle = '#0d1b2a'; c.beginPath(); c.ellipse(w * .5, h * .55, w * .26, h * .34, 0, 0, 6.28); c.fill(); c.fillStyle = '#0a0a0a'; c.fillRect(w * .26, h * .42, w * .48, h * .1); c.fillStyle = '#f28a6b'; c.fillRect(w * .4, h * .75, w * .2, h * .25); },
+  (c, w, h) => { c.fillStyle = '#1e2fa8'; c.fillRect(0, 0, w, h); c.fillStyle = '#e9edf5'; for (let i = 0; i < 9; i++) { c.save(); c.translate(w * .5, h * .45); c.rotate(i * .7); c.beginPath(); c.ellipse(0, -h * .17, w * .06, h * .17, 0, 0, 6.28); c.fill(); c.restore(); } c.strokeStyle = '#2c6b2f'; c.lineWidth = w * .03; c.beginPath(); c.moveTo(w * .5, h * .55); c.quadraticCurveTo(w * .45, h * .8, w * .52, h); c.stroke(); },
+  (c, w, h) => { c.fillStyle = '#e8f23a'; c.fillRect(0, 0, w, h); c.fillStyle = '#111'; c.beginPath(); c.moveTo(w * .1, h); c.bezierCurveTo(w * .2, h * .3, w * .6, h * .2, w * .9, h * .5); c.lineTo(w * .7, h); c.fill(); },
+  (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#7fd4e6'); g.addColorStop(.55, '#d9f3f6'); g.addColorStop(.56, '#3b4e5a'); g.addColorStop(1, '#1b252c'); c.fillStyle = g; c.fillRect(0, 0, w, h); c.fillStyle = '#f5f5f5'; c.fillRect(w * .62, h * .2, w * .05, h * .38); },
+];
+const labels = ['sun 0.98', 'person 0.91', 'flower 0.87', 'shape 0.76', 'tower 0.83'];
+let W, H, dpr, cards = [], u = 1, ox = 0, oy = 0;
+const spec = [[36, 18, 15, 15], [28, 34, 15, 18], [46, 30, 30, 24], [20, 54, 18, 14], [62, 14, 18, 14]];
+cards = spec.map((s, i) => ({ img: paint(800, 800 * s[3] / s[2], art[i]), label: labels[i], nx: s[0], ny: s[1], s, ph: i * 1.7 }));
+function layout() {
+  dpr = Math.min(2, devicePixelRatio || 1);
+  W = cv.width = innerWidth * dpr;
+  H = cv.height = innerHeight * dpr;
+  u = Math.min(W / 68, H / 64);
+  ox = (W - u * 60) / 2 - u * 20;
+  oy = (H - u * 54) / 2 - u * 14;
+}
+layout();
+addEventListener('resize', layout);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function draw(t) {
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#14170f';
+  ctx.fillRect(0, 0, W, H);
+  cards.forEach((c) => {
+    if (cv.width !== Math.round(innerWidth * dpr)) layout();
+    const fx = c === drag?.c || reduce ? 0 : Math.sin(t / 1600 + c.ph) * 4 * dpr, fy = c === drag?.c || reduce ? 0 : Math.cos(t / 1900 + c.ph) * 4 * dpr;
+    c.w = c.s[2] * u; c.h = c.s[3] * u;
+    c.dx = ox + c.nx * u + fx; c.dy = oy + c.ny * u + fy;
+    ctx.drawImage(c.img, c.dx, c.dy, c.w, c.h);
+  });
+  for (let i = 0; i < cards.length; i++) for (let j = i + 1; j < cards.length; j++) {
+    const a = cards[i], b = cards[j];
+    const x0 = Math.max(a.dx, b.dx), y0 = Math.max(a.dy, b.dy), x1 = Math.min(a.dx + a.w, b.dx + b.w), y1 = Math.min(a.dy + a.h, b.dy + b.h);
+    if (x1 > x0 && y1 > y0) {
+      ctx.globalCompositeOperation = 'difference';
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.globalCompositeOperation = 'saturation';
+      ctx.fillStyle = '#808080';
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.lineWidth = 1 * dpr;
+  ctx.font = `500 ${9 * dpr}px Menlo, monospace`;
+  cards.forEach((c) => {
+    const p = 6 * dpr;
+    ctx.strokeStyle = 'rgba(220,230,210,.7)';
+    ctx.strokeRect(c.dx - p, c.dy - p, c.w + p * 2, c.h + p * 2);
+    const tw = ctx.measureText(c.label).width + 8 * dpr;
+    ctx.fillStyle = 'rgba(220,230,210,.9)';
+    ctx.fillRect(c.dx - p, c.dy - p - 14 * dpr, tw, 14 * dpr);
+    ctx.fillStyle = '#14170f';
+    ctx.fillText(c.label, c.dx - p + 4 * dpr, c.dy - p - 4 * dpr);
+  });
+  requestAnimationFrame(draw);
+}
+let drag = null;
+const at = (e) => { const x = e.clientX * dpr, y = e.clientY * dpr; for (let i = cards.length - 1; i >= 0; i--) { const c = cards[i]; if (x > c.dx && x < c.dx + c.w && y > c.dy && y < c.dy + c.h) return { c, i, x, y }; } return null; };
+cv.addEventListener('pointerdown', (e) => { const h = at(e); if (!h) return; cards.splice(h.i, 1); cards.push(h.c); drag = { c: h.c, px: h.x, py: h.y }; cv.classList.add('is-drag'); cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', (e) => { if (!drag) return; const x = e.clientX * dpr, y = e.clientY * dpr; drag.c.nx += (x - drag.px) / u; drag.c.ny += (y - drag.py) / u; drag.px = x; drag.py = y; });
+cv.addEventListener('pointerup', () => { drag = null; cv.classList.remove('is-drag'); });
+addEventListener('dragover', (e) => e.preventDefault());
+addEventListener('drop', (e) => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  const h = at(e);
+  if (!f || !h) return;
+  const img = new Image();
+  img.onload = () => { h.c.img = paint(600, 600 * h.c.h / h.c.w, (c, w, hh) => { const s = Math.max(w / img.width, hh / img.height); c.drawImage(img, (w - img.width * s) / 2, (hh - img.height * s) / 2, img.width * s, img.height * s); }); };
+  img.src = URL.createObjectURL(f);
+});
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

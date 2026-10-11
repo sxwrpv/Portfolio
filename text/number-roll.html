@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Animated number</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; gap: 28px; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.card { display: grid; gap: 14px; justify-items: center; padding: 24px 28px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); min-width: 320px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+.big { font: 700 56px/1 system-ui, -apple-system, sans-serif; }
+.price { font: 700 44px/1 system-ui, -apple-system, sans-serif; }
+.price small { font-size: 16px; color: var(--muted); font-weight: 500; }
+.stats { display: flex; gap: 22px; }
+.stats button { display: inline-flex; gap: 8px; align-items: center; border: 0; padding: 6px 8px; }
+.stats button[aria-pressed="true"] { background: transparent; color: var(--accent); }
+</style>
+<style id="effect">
+.num { --h: 1.15em; display: inline-flex; align-items: flex-start; font-variant-numeric: tabular-nums; line-height: var(--h); }
+.num__d { display: inline-block; height: var(--h); overflow: hidden; -webkit-mask-image: linear-gradient(transparent, #000 20%, #000 80%, transparent); mask-image: linear-gradient(transparent, #000 20%, #000 80%, transparent); }
+.num__strip { display: flex; flex-direction: column; transform: translateY(calc(var(--n, 0) * var(--h) * -1)); transition: transform var(--t, .9s) var(--ease, cubic-bezier(.2, .9, .25, 1.15)); }
+.num__strip > span { height: var(--h); text-align: center; }
+.num__c { display: inline-block; white-space: pre; }
+.num__in { animation: num-in .45s cubic-bezier(.2, .9, .25, 1.1) both; }
+@keyframes num-in { from { opacity: 0; transform: translateY(40%) scale(.7); } }
+@media (prefers-reduced-motion: reduce) { .num__strip { transition: none; } .num__in { animation: none; } }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="big" data-num="counter" aria-live="polite"></div>
+  <div class="row"><button type="button" data-step="-1">−1</button><button type="button" data-step="1">+1</button><button type="button" data-step="137">+137</button><button type="button" data-step="random">Random</button></div>
+</div>
+<div class="card">
+  <div class="row"><button type="button" data-plan="month" aria-pressed="true">Monthly</button><button type="button" data-plan="year" aria-pressed="false">Yearly</button></div>
+  <div class="price"><span data-num="price"></span> <small data-per>/ month</small></div>
+</div>
+<div class="card">
+  <div class="stats">
+    <button type="button" data-like aria-pressed="false">♥ <span data-num="likes"></span></button>
+    <button type="button" data-repost aria-pressed="false">⟲ <span data-num="reposts"></span></button>
+  </div>
+</div>
+<script>
+const DIGITS = '0123456789';
+const strip = `<span class="num__strip">${[...DIGITS].map((d) => `<span>${d}</span>`).join('')}</span>`;
+function setNumber(el, text, trend = 0) {
+  const prev = el.dataset.v || '';
+  el.dataset.v = text;
+  el.setAttribute('aria-label', text);
+  if (!el.firstElementChild || el.firstElementChild.className !== 'num') el.innerHTML = '<span class="num" aria-hidden="true"></span>';
+  const box = el.firstElementChild;
+  const shape = (t) => t.replace(/\d/g, '#');
+  const isD = (c) => DIGITS.includes(c);
+  if (prev && shape(prev) === shape(text)) {
+    [...box.children].forEach((cell, i) => { if (cell.classList.contains('num__d')) cell.style.setProperty('--n', text[i]); });
+    return;
+  }
+  const old = [...prev];
+  const chars = [...text];
+  box.innerHTML = chars.map((c, i) => {
+    if (!isD(c)) return `<span class="num__c">${c}</span>`;
+    const was = old[old.length - (chars.length - i)];
+    const from = prev && isD(was || '') ? was : (trend < 0 ? '9' : '0');
+    return `<span class="num__d${prev && !isD(was || '') ? ' num__in' : ''}" style="--n:${prev ? from : c}">${strip}</span>`;
+  }).join('');
+  if (!prev) return;
+  box.getBoundingClientRect();
+  [...box.children].forEach((cell, i) => { if (cell.classList.contains('num__d')) cell.style.setProperty('--n', chars[i]); });
+}
+const fmt = new Intl.NumberFormat('en-US');
+const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+let count = 1250;
+const counter = document.querySelector('[data-num="counter"]');
+setNumber(counter, fmt.format(count));
+document.querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => {
+  const s = b.dataset.step;
+  const next = s === 'random' ? Math.floor(Math.random() * 100000) : count + Number(s);
+  setNumber(counter, fmt.format(next), Math.sign(next - count));
+  count = next;
+}));
+const price = document.querySelector('[data-num="price"]');
+const per = document.querySelector('[data-per]');
+const PLAN = { month: [29, '/ month'], year: [290, '/ year'] };
+setNumber(price, money.format(PLAN.month[0]));
+document.querySelectorAll('[data-plan]').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-plan]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  setNumber(price, money.format(PLAN[b.dataset.plan][0]));
+  per.textContent = PLAN[b.dataset.plan][1];
+}));
+const stat = (sel, start) => {
+  const btn = document.querySelector(sel);
+  const out = btn.querySelector('[data-num]');
+  let n = start;
+  setNumber(out, fmt.format(n));
+  btn.addEventListener('click', () => {
+    const on = btn.getAttribute('aria-pressed') !== 'true';
+    btn.setAttribute('aria-pressed', String(on));
+    n += on ? 1 : -1;
+    setNumber(out, fmt.format(n), on ? 1 : -1);
+  });
+};
+stat('[data-like]', 1999);
+stat('[data-repost]', 349);
+</script>
+</body>
+</html>

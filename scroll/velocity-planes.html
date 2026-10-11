@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Scroll velocity planes</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --text: #f4f4f5; --muted: #a1a1aa; }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.hint { position: fixed; left: 0; right: 0; bottom: 20px; text-align: center; color: var(--muted); }
+</style>
+<style id="effect">
+.planes { height: 500vh; }
+.planes__stage { position: sticky; top: 0; height: 100vh; overflow: hidden; perspective: 1200px; display: flex; align-items: center; }
+.planes__row { display: flex; gap: 28px; padding: 0 30vw; transform-style: preserve-3d; will-change: transform; }
+.planes__card { flex: none; width: 260px; aspect-ratio: 3 / 4; border-radius: 16px; display: grid; place-items: end start; padding: 16px; font: 800 30px/1 system-ui, sans-serif; color: rgba(255, 255, 255, .92); transform-style: preserve-3d; will-change: transform; }
+</style>
+</head>
+<body>
+<section class="planes" data-planes>
+  <div class="planes__stage"><div class="planes__row" data-row></div></div>
+</section>
+<p class="hint">Scroll fast, then slow</p>
+<script>
+const row = document.querySelector('[data-row]');
+const section = document.querySelector('[data-planes]');
+for (let i = 0; i < 14; i++) {
+  const h = (i * 31) % 360;
+  const c = document.createElement('div');
+  c.className = 'planes__card';
+  c.style.background = `linear-gradient(160deg, hsl(${h} 75% 60%), hsl(${(h + 50) % 360} 70% 28%))`;
+  c.textContent = String(i + 1).padStart(2, '0');
+  row.append(c);
+}
+const cards = [...row.children];
+let lastY = scrollY;
+let vel = 0;
+let bend = 0;
+let bv = 0;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const frame = () => {
+  const y = scrollY;
+  vel = vel * .8 + (y - lastY) * .2;
+  lastY = y;
+  const target = reduce ? 0 : Math.max(-1, Math.min(1, vel / 40));
+  bv += (-140 * (bend - target) - 18 * bv) / 60;
+  bend += bv / 60;
+  const max = section.offsetHeight - innerHeight;
+  const p = Math.min(1, Math.max(0, -section.getBoundingClientRect().top / max));
+  row.style.transform = `translate3d(${-p * (row.scrollWidth - innerWidth)}px, 0, 0)`;
+  const mid = innerWidth / 2;
+  cards.forEach((c) => {
+    const r = c.getBoundingClientRect();
+    const off = (r.left + r.width / 2 - mid) / mid;
+    c.style.transform = `translateZ(${-Math.abs(bend) * 160 * (1 - Math.min(1, Math.abs(off)))}px) rotateY(${bend * -28 * Math.sign(off || 1) * Math.min(1, Math.abs(off) * 1.4)}deg) translateY(${Math.sin(off * 3) * bend * 60}px)`;
+  });
+  requestAnimationFrame(frame);
+};
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

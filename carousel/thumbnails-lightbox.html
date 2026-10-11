@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Thumbnail gallery with lightbox</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; gap: 16px; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+</style>
+<style id="effect">
+.gal { width: min(92vw, 760px); display: grid; gap: 12px; }
+.gal__main { position: relative; aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden; cursor: zoom-in; border: 0; padding: 0; background: var(--panel); }
+.gal__main .shot { position: absolute; inset: 0; transition: opacity .45s, transform .6s cubic-bezier(.2, .8, .2, 1); }
+.gal__main .shot:not(.is-on) { opacity: 0; transform: scale(1.04); }
+.gal__thumbs { display: flex; gap: 8px; overflow-x: auto; padding: 4px; scrollbar-width: none; }
+.gal__thumbs::-webkit-scrollbar { display: none; }
+.gal__thumb { flex: none; width: 96px; aspect-ratio: 16 / 10; border-radius: 10px; border: 0; padding: 0; cursor: pointer; opacity: .5; outline: 2px solid transparent; outline-offset: 2px; transition: opacity .2s, outline-color .2s, transform .2s; }
+.gal__thumb:hover { opacity: .85; }
+.gal__thumb[aria-current="true"] { opacity: 1; outline-color: var(--accent); }
+.shot { display: grid; place-items: center; font: 900 72px/1 system-ui, sans-serif; color: rgba(255, 255, 255, .9); }
+.lightbox { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(0, 0, 0, 0); transition: background-color .35s; }
+.lightbox.is-open { background: rgba(0, 0, 0, .86); }
+.lightbox[hidden] { display: none; }
+.lightbox__img { width: min(94vw, 1200px); aspect-ratio: 16 / 10; border-radius: 12px; }
+.lightbox__btn { position: absolute; top: 50%; width: 48px; height: 48px; margin-top: -24px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .12); color: #fff; font-size: 20px; cursor: pointer; }
+.lightbox__btn--prev { left: 16px; } .lightbox__btn--next { right: 16px; }
+.lightbox__close { position: absolute; top: 14px; right: 14px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .12); color: #fff; font-size: 22px; cursor: pointer; }
+.lightbox__ui { opacity: 0; transition: opacity .25s .2s; }
+.lightbox.is-open .lightbox__ui { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="gal">
+  <button class="gal__main" type="button" data-main aria-label="Open image full screen"></button>
+  <div class="gal__thumbs" data-thumbs role="tablist" aria-label="Images"></div>
+</div>
+<div class="lightbox" data-lightbox hidden role="dialog" aria-modal="true" aria-label="Image viewer">
+  <div class="lightbox__img shot" data-big></div>
+  <button class="lightbox__btn lightbox__btn--prev lightbox__ui" type="button" data-lb-prev aria-label="Previous">←</button>
+  <button class="lightbox__btn lightbox__btn--next lightbox__ui" type="button" data-lb-next aria-label="Next">→</button>
+  <button class="lightbox__close lightbox__ui" type="button" data-lb-close aria-label="Close">×</button>
+</div>
+<script>
+const N = 9;
+const bg = (i) => `radial-gradient(90% 90% at ${20 + (i * 17) % 60}% 25%, hsl(${(i * 40 + 20) % 360} 85% 64%), hsl(${(i * 40 + 70) % 360} 65% 24%))`;
+const main = document.querySelector('[data-main]');
+const thumbs = document.querySelector('[data-thumbs]');
+const lb = document.querySelector('[data-lightbox]');
+const big = document.querySelector('[data-big]');
+let index = 0;
+for (let i = 0; i < N; i++) {
+  const s = document.createElement('div');
+  s.className = 'shot';
+  s.style.background = bg(i);
+  s.textContent = i + 1;
+  main.append(s);
+  const t = document.createElement('button');
+  t.className = 'gal__thumb';
+  t.type = 'button';
+  t.setAttribute('role', 'tab');
+  t.setAttribute('aria-label', `Image ${i + 1}`);
+  t.style.background = bg(i);
+  t.addEventListener('click', () => show(i));
+  thumbs.append(t);
+}
+const shots = [...main.children];
+const tabs = [...thumbs.children];
+function show(i) {
+  index = (i + N) % N;
+  shots.forEach((s, k) => s.classList.toggle('is-on', k === index));
+  tabs.forEach((t, k) => { t.setAttribute('aria-current', String(k === index)); t.setAttribute('aria-selected', String(k === index)); });
+  tabs[index].scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  big.style.background = bg(index);
+  big.textContent = index + 1;
+}
+const flipFrom = (fromRect, el, reverse = false) => {
+  const to = el.getBoundingClientRect();
+  const kf = [{ transform: `translate(${fromRect.left - to.left}px, ${fromRect.top - to.top}px) scale(${fromRect.width / to.width}, ${fromRect.height / to.height})`, borderRadius: '16px' }, { transform: 'none', borderRadius: '12px' }];
+  return el.animate(reverse ? kf.reverse() : kf, { duration: 520, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'both' });
+};
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function open() {
+  lb.hidden = false;
+  big.style.transformOrigin = '0 0';
+  if (!reduce) flipFrom(main.getBoundingClientRect(), big);
+  requestAnimationFrame(() => lb.classList.add('is-open'));
+  lb.querySelector('[data-lb-close]').focus();
+}
+async function close() {
+  lb.classList.remove('is-open');
+  if (!reduce) await flipFrom(main.getBoundingClientRect(), big, true).finished;
+  lb.hidden = true;
+  big.getAnimations().forEach((a) => a.cancel());
+  main.focus();
+}
+main.addEventListener('click', open);
+lb.querySelector('[data-lb-close]').addEventListener('click', close);
+lb.querySelector('[data-lb-prev]').addEventListener('click', () => show(index - 1));
+lb.querySelector('[data-lb-next]').addEventListener('click', () => show(index + 1));
+lb.addEventListener('click', (e) => { if (e.target === lb) close(); });
+addEventListener('keydown', (e) => {
+  if (lb.hidden) return;
+  if (e.key === 'Escape') close();
+  if (e.key === 'ArrowRight') show(index + 1);
+  if (e.key === 'ArrowLeft') show(index - 1);
+});
+show(0);
+</script>
+</body>
+</html>

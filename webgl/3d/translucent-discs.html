@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Translucent discs</title>
+<style id="page">
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body { overflow: hidden; background: #000; color: #fff; font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+canvas[data-gl] { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.dock { position: fixed; left: 16px; bottom: 16px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; }
+.dock button, .dock label { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, .28); border-radius: 999px; background: rgba(10, 10, 12, .5); color: #fff; font: 500 13px/1 system-ui, sans-serif; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.dock input[type=file] { display: none; }
+.dock input[type=color] { width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
+.gl-fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: #aaa; }
+.embed .dock, .embed .hint { display: none !important; }
+.embed canvas[data-gl] { touch-action: pan-y; }
+body { background: radial-gradient(120% 90% at 50% 40%, #e9e9e9, #cfcfcf); color: #111; }
+.stage { position: fixed; inset: 0; display: grid; place-items: center; }
+.fan { position: relative; width: min(70vmin, 620px, 52vw); height: min(70vmin, 620px, 52vw); }
+.disc, .shadow { position: absolute; left: 50%; top: 50%; width: 48%; aspect-ratio: 1; margin: -24% 0 0 -24%; border-radius: 50%; }
+.disc { background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, .6), transparent 44%), radial-gradient(circle at 70% 78%, rgba(0, 0, 0, .1), transparent 50%), var(--c); opacity: .8; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .55), inset 0 0 18px rgba(255, 255, 255, .25), inset -10px -14px 30px rgba(0, 0, 0, .08); will-change: transform; }
+.shadow { background: var(--c); filter: blur(34px) saturate(1.4); opacity: .55; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .disc, .shadow { transition: none; } }
+</style>
+</head>
+<body>
+<div class="stage"><div class="fan" data-fan></div></div>
+<script>
+const colors = ['#ffd84d', '#ff8a6b', '#ff3fb4', '#8f7dff', '#4fe0b5'];
+const fan = document.querySelector('[data-fan]');
+const items = colors.map((c, i) => {
+  const sh = document.createElement('div');
+  sh.className = 'shadow';
+  sh.style.setProperty('--c', c);
+  const d = document.createElement('div');
+  d.className = 'disc';
+  d.style.setProperty('--c', c);
+  fan.append(sh, d);
+  const a = (-70 + i * 35) * Math.PI / 180;
+  return { d, sh, x: Math.sin(a) * 62, y: -Math.cos(a) * 36 + 10, rx: 0, ry: 0 };
+});
+let mx = .5, my = .5, auto = true, last = 0, prev = performance.now();
+addEventListener('pointermove', (e) => { mx = e.clientX / innerWidth; my = e.clientY / innerHeight; auto = false; last = performance.now(); });
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function frame(now) {
+  const dt = Math.min(.05, Math.max(0, (now - prev) / 1000));
+  prev = now;
+  if (performance.now() - last > 3000) auto = true;
+  const tx = auto ? .5 + .4 * Math.sin(now / 1600) : mx, ty = auto ? .5 + .3 * Math.cos(now / 2100) : my;
+  items.forEach((it, i) => {
+    const k = reduce ? 1 : 1 - Math.exp(-dt * (5 - i * .5));
+    const try_ = (tx - .5) * 150 - (i - 2) * 6, trx = -(ty - .5) * 90;
+    it.ry += (try_ - it.ry) * k;
+    it.rx += (trx - it.rx) * k;
+    it.d.style.transform = `perspective(900px) translate(${it.x}%, ${it.y}%) rotateY(${it.ry.toFixed(2)}deg) rotateX(${it.rx.toFixed(2)}deg)`;
+    const squash = Math.abs(Math.cos(it.ry * Math.PI / 180));
+    it.sh.style.transform = `translate(${it.x + 12}%, ${it.y + 26}%) scale(${(.35 + squash * .75).toFixed(3)}, ${(.5 + squash * .3).toFixed(3)})`;
+  });
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

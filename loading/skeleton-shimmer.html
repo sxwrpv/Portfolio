@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Skeleton shimmer</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.profile { width: min(420px, 92vw); display: grid; grid-template-columns: 64px 1fr; gap: 14px; padding: 18px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); }
+.profile__img { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #ffb36b, #a8324a); }
+.profile h2 { font-size: 18px; }
+.profile p { color: var(--muted); font-size: 14px; }
+.profile__media { grid-column: 1 / -1; height: 160px; border-radius: 12px; background: linear-gradient(135deg, #7ad0ff, #273c8f); }
+</style>
+<style id="effect">
+.is-loading .sk { position: relative; color: transparent !important; background: var(--line) !important; border-radius: 8px; overflow: hidden; }
+.is-loading .sk::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, .08) 50%, transparent 80%); transform: translateX(-100%); animation: sk-shine 1.3s ease-in-out infinite; }
+.is-loading .profile__img.sk { border-radius: 50%; }
+@keyframes sk-shine { to { transform: translateX(100%); } }
+.is-revealed .sk { animation: sk-in .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes sk-in { from { opacity: 0; filter: blur(6px); } }
+@media (prefers-reduced-motion: reduce) { .is-loading .sk::after, .is-revealed .sk { animation: none; } }
+</style>
+</head>
+<body>
+<article class="profile is-loading" data-card aria-busy="true">
+  <div class="profile__img sk" style="--i:0"></div>
+  <div><h2 class="sk" style="--i:1">Mira Solenne</h2><p class="sk" style="--i:2">Illustrator &amp; daydreamer · somewhere sunny</p></div>
+  <div class="profile__media sk" style="--i:3"></div>
+  <p class="sk" style="--i:4;grid-column:1/-1">Placeholders keep the exact size of the content they stand in for, so nothing jumps when the data arrives.</p>
+</article>
+<button type="button" data-reload>Reload</button>
+<script>
+const card = document.querySelector('[data-card]');
+const run = () => {
+  card.classList.remove('is-revealed');
+  card.classList.add('is-loading');
+  card.setAttribute('aria-busy', 'true');
+  setTimeout(() => { card.classList.remove('is-loading'); card.classList.add('is-revealed'); card.setAttribute('aria-busy', 'false'); }, 1800);
+};
+document.querySelector('[data-reload]').addEventListener('click', run);
+run();
+</script>
+</body>
+</html>

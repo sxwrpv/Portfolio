@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Mega menu with sliding indicator</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+header { display: flex; justify-content: center; padding: 18px; border-bottom: 1px solid var(--line); }
+main { max-width: 700px; margin: 18vh auto 0; padding: 0 20px; color: var(--muted); text-align: center; }
+</style>
+<style id="effect">
+.mm { position: relative; }
+.mm__bar { position: relative; display: flex; gap: 2px; list-style: none; padding: 0; }
+.mm__trigger { position: relative; z-index: 1; padding: 10px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--text); font: 600 15px/1 system-ui, sans-serif; cursor: pointer; }
+.mm__pill { position: absolute; left: 0; top: 0; height: 100%; width: var(--w, 0); border-radius: 999px; background: var(--line); transform: translateX(var(--x, 0)); opacity: 0; transition: transform .35s cubic-bezier(.2, .9, .3, 1.1), width .35s cubic-bezier(.2, .9, .3, 1.1), opacity .2s; }
+.mm.is-hover .mm__pill { opacity: 1; }
+.mm.is-instant .mm__pill { transition: opacity .2s; }
+.mm__panel { position: absolute; left: 50%; top: calc(100% + 12px); width: var(--pw, 0); height: var(--ph, 0); translate: -50% 0; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 30px 70px rgba(0, 0, 0, .5); overflow: hidden; opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none; transition: width .4s cubic-bezier(.2, .9, .25, 1), height .4s cubic-bezier(.2, .9, .25, 1), opacity .2s, transform .3s; }
+.mm.is-open .mm__panel { opacity: 1; transform: none; pointer-events: auto; }
+.mm.is-instant .mm__panel { transition: opacity .2s, transform .3s; }
+.mm__content { position: absolute; left: 0; top: 0; display: grid; grid-auto-flow: column; gap: 24px; padding: 22px; opacity: 0; visibility: hidden; transform: translateX(calc(var(--dir, 0) * 40px)); transition: opacity .25s, transform .4s cubic-bezier(.2, .9, .25, 1), visibility 0s .25s; }
+.mm__content.is-active { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+.mm__col { display: grid; gap: 4px; align-content: start; min-width: 170px; opacity: 0; transform: translateY(8px); transition: opacity .3s, transform .4s cubic-bezier(.2, .9, .3, 1.1); }
+.mm__content.is-active .mm__col { opacity: 1; transform: none; transition-delay: calc(60ms + var(--i) * 50ms); }
+.mm__col h3 { margin-bottom: 6px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.mm__col a { padding: 6px 8px; margin: 0 -8px; border-radius: 8px; color: var(--text); text-decoration: none; }
+.mm__col a:hover { background: var(--line); }
+@media (prefers-reduced-motion: reduce) { .mm *, .mm__panel { transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <nav class="mm" data-mm aria-label="Main">
+    <ul class="mm__bar" data-bar><li class="mm__pill" aria-hidden="true" data-pill></li></ul>
+    <div class="mm__panel" data-panel></div>
+  </nav>
+</header>
+<main>Hover the menu items. The pill slides between triggers and the panel morphs to fit each menu.</main>
+<script>
+const MENUS = {
+  Services: [['Make', ['Sketches', 'Prototypes', 'Animations']], ['Learn', ['Guides', 'Recipes', 'Playground']]],
+  Pricing: [['Plans', ['Free', 'Pro', 'Studio']]],
+  Company: [['About', ['Our story', 'Manifesto', 'Careers']], ['Help', ['Contact', 'FAQ', 'Privacy']], ['Social', ['Instagram', 'Dribbble', 'Newsletter']]],
+};
+const mm = document.querySelector('[data-mm]');
+const bar = mm.querySelector('[data-bar]');
+const pill = mm.querySelector('[data-pill]');
+const panel = mm.querySelector('[data-panel]');
+const names = Object.keys(MENUS);
+const contents = names.map((name, k) => {
+  const li = document.createElement('li');
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'mm__trigger';
+  b.textContent = name;
+  b.setAttribute('aria-expanded', 'false');
+  b.setAttribute('aria-controls', `mm-${k}`);
+  li.append(b);
+  bar.append(li);
+  const c = document.createElement('div');
+  c.className = 'mm__content';
+  c.id = `mm-${k}`;
+  c.innerHTML = MENUS[name].map(([h, links], i) => `<div class="mm__col" style="--i:${i}"><h3>${h}</h3>${links.map((l) => `<a href="#">${l}</a>`).join('')}</div>`).join('');
+  panel.append(c);
+  b.addEventListener('pointerenter', () => show(k));
+  b.addEventListener('focus', () => show(k));
+  b.addEventListener('click', () => show(k));
+  return { b, c };
+});
+let current = -1, closeT;
+function show(k) {
+  clearTimeout(closeT);
+  const first = current === -1;
+  mm.classList.toggle('is-instant', first);
+  const { b, c } = contents[k];
+  const br = b.getBoundingClientRect(), barR = bar.getBoundingClientRect();
+  pill.style.setProperty('--x', `${br.left - barR.left}px`);
+  pill.style.setProperty('--w', `${br.width}px`);
+  contents.forEach((x, i) => {
+    x.c.style.setProperty('--dir', i === k ? 0 : i < k ? -1 : 1);
+    x.c.classList.toggle('is-active', i === k);
+    x.b.setAttribute('aria-expanded', String(i === k));
+  });
+  panel.style.setProperty('--pw', `${c.offsetWidth}px`);
+  panel.style.setProperty('--ph', `${c.offsetHeight}px`);
+  if (first) { void panel.offsetWidth; requestAnimationFrame(() => mm.classList.remove('is-instant')); }
+  mm.classList.add('is-hover', 'is-open');
+  current = k;
+}
+const hide = () => {
+  closeT = setTimeout(() => {
+    mm.classList.remove('is-hover', 'is-open');
+    contents.forEach((x) => x.b.setAttribute('aria-expanded', 'false'));
+    current = -1;
+  }, 160);
+};
+mm.addEventListener('pointerleave', hide);
+mm.addEventListener('pointerenter', () => clearTimeout(closeT));
+mm.addEventListener('focusout', (e) => { if (!mm.contains(e.relatedTarget)) hide(); });
+addEventListener('keydown', (e) => { if (e.key === 'Escape') { clearTimeout(closeT); mm.classList.remove('is-hover', 'is-open'); current = -1; } });
+</script>
+</body>
+</html>

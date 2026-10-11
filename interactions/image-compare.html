@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Before / after image compare slider</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 14px; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+small { color: var(--muted); }
+.ph-before { background: repeating-linear-gradient(45deg, #5a3a2a 0 18px, #6b4532 18px 36px), linear-gradient(#3a2a22, #1d1512); background-blend-mode: overlay; }
+.ph-after { background: linear-gradient(160deg, #f1e6d6, #c9b49a); }
+</style>
+<style id="effect">
+.cmp { --pos: 50%; position: relative; width: min(760px, 92vw); aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden; touch-action: pan-y; -webkit-user-select: none; user-select: none; cursor: ew-resize; }
+.cmp__img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.cmp__img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cmp__after { clip-path: inset(0 0 0 var(--pos)); }
+.cmp__tag { position: absolute; top: 14px; padding: 6px 10px; border-radius: 6px; font: 800 12px/1 system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; background: rgba(0, 0, 0, .55); color: #fff; transition: opacity .2s; }
+.cmp__tag--before { left: 14px; opacity: clamp(0, (var(--n) - 12) / 10, 1); }
+.cmp__tag--after { right: 14px; opacity: clamp(0, (88 - var(--n)) / 10, 1); }
+.cmp__handle { position: absolute; top: 0; bottom: 0; left: var(--pos); width: 2px; margin-left: -1px; background: #fff; pointer-events: none; }
+.cmp__knob { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; font: 800 16px/1 system-ui, sans-serif; box-shadow: 0 6px 20px rgba(0, 0, 0, .35); transition: transform .3s cubic-bezier(.2, 1.6, .3, 1); }
+.cmp.is-dragging .cmp__knob { transform: scale(1.12); }
+.cmp__range { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
+.cmp:focus-within .cmp__knob { box-shadow: 0 0 0 4px var(--accent); }
+</style>
+</head>
+<body>
+<div class="cmp" data-cmp>
+  <div class="cmp__img ph-before" role="img" aria-label="Sketch before colour"></div>
+  <div class="cmp__img cmp__after ph-after" role="img" aria-label="Same scene after colour"></div>
+  <span class="cmp__tag cmp__tag--before" aria-hidden="true">Before</span>
+  <span class="cmp__tag cmp__tag--after" aria-hidden="true">After</span>
+  <div class="cmp__handle" aria-hidden="true"><span class="cmp__knob">↔</span></div>
+  <input class="cmp__range" type="range" min="0" max="100" step=".1" value="50" aria-label="Before and after comparison" data-range>
+</div>
+<small>Drag, tap anywhere or use the arrow keys. Swap the two backgrounds for your own &lt;img&gt;.</small>
+<script>
+document.querySelectorAll('[data-cmp]').forEach((cmp) => {
+  const range = cmp.querySelector('[data-range]');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let shown = Number(range.value), target = shown, raf;
+  const paint = () => { cmp.style.setProperty('--pos', `${shown}%`); cmp.style.setProperty('--n', shown); };
+  let last = 0;
+  const tick = (now) => { const f = last ? Math.min(3, (now - last) / 16.667) : 1; last = now; shown += (target - shown) * (1 - Math.pow(.75, f)); if (Math.abs(target - shown) < .05) shown = target; paint(); if (shown !== target) raf = requestAnimationFrame(tick); else { raf = null; last = 0; } };
+  range.addEventListener('input', () => { target = Number(range.value); if (reduce) { shown = target; paint(); } else if (!raf) raf = requestAnimationFrame(tick); });
+  range.addEventListener('pointerdown', () => cmp.classList.add('is-dragging'));
+  addEventListener('pointerup', () => cmp.classList.remove('is-dragging'));
+  if (!reduce) {
+    shown = 18; paint();
+    target = 50;
+    setTimeout(() => { if (!raf) raf = requestAnimationFrame(tick); }, 400);
+  } else paint();
+});
+</script>
+</body>
+</html>

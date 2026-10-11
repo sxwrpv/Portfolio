@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Hold to confirm</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --danger: #ff4d4d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 14px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+small { color: var(--muted); }
+</style>
+<style id="effect">
+.hold { --p: 0; position: relative; overflow: hidden; width: 220px; height: 56px; border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger); font: 700 16px/1 system-ui, sans-serif; cursor: pointer; transform: scale(calc(1 - var(--p) * .04)); -webkit-user-select: none; user-select: none; touch-action: none; }
+.hold__fill { position: absolute; inset: 0; background: var(--danger); transform-origin: 0 50%; transform: scaleX(var(--p)); }
+.hold__label { position: relative; display: grid; place-items: center; height: 100%; }
+.hold__label--top { position: absolute; inset: 0; color: #fff; clip-path: inset(0 calc((1 - var(--p)) * 100%) 0 0); }
+.hold.is-done { animation: hold-pop .5s cubic-bezier(.2, 1.6, .3, 1); }
+@keyframes hold-pop { 30% { transform: scale(1.06); } }
+</style>
+</head>
+<body>
+<button class="hold" type="button" data-hold aria-describedby="hold-hint"><span class="hold__fill" aria-hidden="true"></span><span class="hold__label">Hold to delete</span><span class="hold__label hold__label--top" aria-hidden="true">Hold to delete</span></button>
+<small id="hold-hint">Press and hold (mouse, touch or Space)</small>
+<script>
+const btn = document.querySelector('[data-hold]');
+const labels = btn.querySelectorAll('.hold__label');
+const DURATION = 1400;
+let p = 0, v = 0, holding = false, done = false, last = 0, raf;
+const setLabel = (t) => labels.forEach((l) => { l.textContent = t; });
+const frame = (now) => {
+  const dt = Math.min(.05, (now - last) / 1000);
+  last = now;
+  if (holding && !done) { p = Math.min(1, p + dt * 1000 / DURATION); v = 0; }
+  else if (!done) { v += (-300 * p - 22 * v) * dt; p = Math.max(0, p + v * dt); }
+  btn.style.setProperty('--p', p.toFixed(4));
+  if (p >= 1 && !done) {
+    done = true;
+    btn.classList.add('is-done');
+    setLabel('Deleted ✓');
+    setTimeout(() => { done = false; p = 0; btn.classList.remove('is-done'); setLabel('Hold to delete'); }, 1800);
+  }
+  if (holding || p > .001 || done) raf = requestAnimationFrame(frame); else { p = 0; btn.style.setProperty('--p', 0); raf = null; }
+};
+const start = () => { if (done) return; holding = true; last = performance.now(); if (!raf) raf = requestAnimationFrame(frame); };
+const stop = () => { holding = false; };
+btn.addEventListener('pointerdown', (e) => { btn.setPointerCapture(e.pointerId); start(); });
+btn.addEventListener('pointerup', stop);
+btn.addEventListener('pointercancel', stop);
+btn.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); start(); } });
+btn.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') stop(); });
+btn.addEventListener('click', (e) => e.preventDefault());
+</script>
+</body>
+</html>

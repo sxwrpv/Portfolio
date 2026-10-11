@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Drag to reorder: to-do list and grid</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; align-items: start; padding: 32px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+h2 { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+</style>
+<style id="effect">
+.todo { display: grid; gap: 8px; list-style: none; padding: 0; }
+.todo li, .rgrid li { -webkit-user-select: none; user-select: none; touch-action: none; }
+.todo li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); cursor: grab; }
+.todo .is-lifted, .rgrid .is-lifted { position: relative; z-index: 5; cursor: grabbing; box-shadow: 0 16px 40px rgba(0, 0, 0, .5); scale: 1.03; transition: scale .2s, box-shadow .2s; }
+.todo__check { width: 22px; height: 22px; flex: none; border-radius: 6px; border: 2px solid var(--muted); background: transparent; display: grid; place-items: center; cursor: pointer; transition: background-color .2s, border-color .2s, transform .3s cubic-bezier(.2, 1.6, .3, 1); }
+.todo__check svg { width: 14px; height: 14px; fill: none; stroke: #111; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+.todo__check path { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .3s .05s; }
+.todo__text { position: relative; transition: color .3s; }
+.todo__text::after { content: ""; position: absolute; left: 0; right: 0; top: 52%; height: 2px; background: var(--muted); transform: scaleX(0); transform-origin: 0 50%; transition: transform .35s cubic-bezier(.6, 0, .3, 1); }
+.todo li.is-done .todo__check { background: var(--accent); border-color: var(--accent); transform: scale(1.08); }
+.todo li.is-done .todo__check path { stroke-dashoffset: 0; }
+.todo li.is-done .todo__text { color: var(--muted); }
+.todo li.is-done .todo__text::after { transform: none; }
+.todo__grip { margin-left: auto; color: var(--muted); }
+.rgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; list-style: none; padding: 0; }
+.rgrid li { aspect-ratio: 1; border-radius: 16px; display: grid; place-items: center; font: 800 22px/1 system-ui, sans-serif; color: #111; cursor: grab; }
+</style>
+</head>
+<body>
+<section><h2>To-do list · drag rows, tick items</h2><ul class="todo" data-sortable data-todo></ul></section>
+<section><h2>Grid · drag in two dimensions</h2><ul class="rgrid" data-sortable data-grid></ul></section>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TODOS = ['Water the plants', 'Pack the telescope', 'Call grandma', 'Back up the photos', 'Watch the sunset'];
+const todo = document.querySelector('[data-todo]');
+TODOS.forEach((t) => {
+  const li = document.createElement('li');
+  li.innerHTML = `<button class="todo__check" type="button" aria-pressed="false" aria-label="Done: ${t}"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" pathLength="1"/></svg></button><span class="todo__text">${t}</span><span class="todo__grip" aria-hidden="true">⋮⋮</span>`;
+  const btn = li.querySelector('button');
+  btn.addEventListener('pointerdown', (e) => e.stopPropagation());
+  btn.addEventListener('click', () => { const d = !li.classList.contains('is-done'); li.classList.toggle('is-done', d); btn.setAttribute('aria-pressed', String(d)); });
+  todo.append(li);
+});
+const grid = document.querySelector('[data-grid]');
+for (let i = 1; i <= 12; i++) { const li = document.createElement('li'); li.textContent = i; li.style.background = `hsl(${i * 30} 80% 66%)`; grid.append(li); }
+function sortable(list) {
+  list.querySelectorAll('li').forEach((li) => { li.tabIndex = 0; li.setAttribute('aria-roledescription', 'sortable item'); });
+  let drag = null;
+  const rects = () => new Map([...list.children].map((el) => [el, el.getBoundingClientRect()]));
+  const animateFrom = (before, skip) => {
+    if (reduce) return;
+    [...list.children].forEach((el) => {
+      if (el === skip) return;
+      const a = before.get(el), b = el.getBoundingClientRect();
+      const dx = a.left - b.left, dy = a.top - b.top;
+      if (dx || dy) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.2, 1, .3, 1)' });
+    });
+  };
+  list.addEventListener('pointerdown', (e) => {
+    const li = e.target.closest('li');
+    if (!li || !list.contains(li)) return;
+    const r = li.getBoundingClientRect();
+    drag = { li, ox: e.clientX - r.left, oy: e.clientY - r.top, sx: e.clientX, sy: e.clientY };
+    li.setPointerCapture(e.pointerId);
+    li.classList.add('is-lifted');
+  });
+  list.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const { li } = drag;
+    const target = [...list.children].find((el) => {
+      if (el === li) return false;
+      const r = el.getBoundingClientRect();
+      return e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom;
+    });
+    if (target) {
+      const before = rects();
+      const items = [...list.children];
+      if (items.indexOf(target) > items.indexOf(li)) target.after(li); else target.before(li);
+      animateFrom(before, li);
+    }
+    li.style.translate = '0px 0px';
+    const home = li.getBoundingClientRect();
+    li.style.translate = `${e.clientX - drag.ox - home.left}px ${e.clientY - drag.oy - home.top}px`;
+  });
+  const drop = () => {
+    if (!drag) return;
+    const { li } = drag;
+    drag = null;
+    const t = li.style.translate;
+    li.style.translate = '';
+    li.classList.remove('is-lifted');
+    if (t && !reduce) li.animate([{ translate: t }, { translate: '0 0' }], { duration: 350, easing: 'cubic-bezier(.2, 1.2, .3, 1)' });
+  };
+  list.addEventListener('pointerup', drop);
+  list.addEventListener('pointercancel', drop);
+  list.addEventListener('keydown', (e) => {
+    const li = e.target.closest('li');
+    if (!li || !e.altKey || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    e.preventDefault();
+    const before = rects();
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') li.previousElementSibling?.before(li); else li.nextElementSibling?.after(li);
+    animateFrom(before);
+    li.focus();
+  });
+}
+document.querySelectorAll('[data-sortable]').forEach(sortable);
+</script>
+</body>
+</html>

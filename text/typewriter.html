@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Typewriter</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; gap: 26px; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.card { width: min(560px, 90vw); padding: 22px 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.card h2 { margin-bottom: 10px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.out { min-height: 1.5em; font-size: 24px; font-weight: 600; }
+.row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.row button { padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
+.count { font: 800 120px/1 system-ui, sans-serif; text-align: center; }
+</style>
+<style id="effect">
+.tw-caret { display: inline-block; width: .08em; height: 1.05em; margin-left: .04em; vertical-align: -.15em; background: currentColor; animation: tw-blink 1s steps(1) infinite; }
+.tw-caret.is-typing { animation: none; }
+@keyframes tw-blink { 50% { opacity: 0; } }
+.tw-pop { display: inline-block; animation: tw-pop .6s cubic-bezier(.2, .9, .3, 1.4) both; }
+@keyframes tw-pop { 0% { transform: scale(2.2); opacity: 0; filter: blur(8px); } 60% { opacity: 1; filter: none; } }
+</style>
+</head>
+<body>
+<section class="card"><h2>Steady</h2><p class="out" data-tw="steady"></p></section>
+<section class="card"><h2>Natural typing (rhythm, pauses, typos)</h2><p class="out" data-tw="natural"></p></section>
+<section class="card"><h2>Change content (erases back to the shared start)</h2><p class="out" data-tw="change"></p>
+  <div class="row"><button type="button" data-say="We make pixels dance.">Pixels</button><button type="button" data-say="We make Mondays bearable.">Mondays</button><button type="button" data-say="We make ideas glow in the dark.">Ideas</button></div></section>
+<section class="card"><h2>Countdown</h2><p class="count" data-count aria-live="polite"></p><div class="row"><button type="button" data-restart>Restart</button></div></section>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NEAR = { a: 'sq', e: 'wr', i: 'uo', o: 'ip', u: 'yi', n: 'bm', r: 'et', s: 'ad', t: 'ry', l: 'k', m: 'n', h: 'gj' };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function writer(el) {
+  const text = document.createElement('span');
+  const caret = document.createElement('span');
+  caret.className = 'tw-caret';
+  caret.setAttribute('aria-hidden', 'true');
+  el.append(text, caret);
+  let token = 0;
+  const api = {
+    get value() { return text.textContent; },
+    set(v) { text.textContent = v; },
+    async type(target, { natural = false, speed = 55 } = {}) {
+      const id = ++token;
+      if (reduce) { text.textContent = target; return; }
+      caret.classList.add('is-typing');
+      let shared = 0;
+      const cur = text.textContent;
+      while (shared < cur.length && cur[shared] === target[shared]) shared++;
+      for (let n = cur.length; n > shared; n--) { if (id !== token) return; text.textContent = cur.slice(0, n - 1); await sleep(natural ? 18 + Math.random() * 20 : 22); }
+      for (let i = shared; i < target.length; i++) {
+        if (id !== token) return;
+        const c = target[i];
+        const lower = c.toLowerCase();
+        if (natural && NEAR[lower] && i > 2 && Math.random() < .06) {
+          text.textContent = target.slice(0, i) + NEAR[lower][Math.floor(Math.random() * NEAR[lower].length)];
+          await sleep(180 + Math.random() * 120);
+          text.textContent = target.slice(0, i);
+          await sleep(120 + Math.random() * 80);
+        }
+        text.textContent = target.slice(0, i + 1);
+        let d = natural ? 45 + Math.random() * 70 : speed;
+        if (natural && c === ' ') d += 30 + Math.random() * 60;
+        if (natural && /[,.!?]/.test(c)) d += 220 + Math.random() * 200;
+        if (natural && Math.random() < .05) d += 250;
+        await sleep(d);
+      }
+      caret.classList.remove('is-typing');
+    },
+  };
+  return api;
+}
+const loop = async (el, lines, opts) => {
+  const tw = writer(el);
+  for (let i = 0; ; i = (i + 1) % lines.length) {
+    await tw.type(lines[i], opts);
+    await sleep(1800);
+    await tw.type('', opts);
+    await sleep(400);
+  }
+};
+loop(document.querySelector('[data-tw="steady"]'), ['Small steps, big ideas.', 'Made with care, shipped with joy.'], {});
+loop(document.querySelector('[data-tw="natural"]'), ['Hi! Is the rooftop free on Friday night?', 'Could you save me a slice of that cake?'], { natural: true });
+const change = writer(document.querySelector('[data-tw="change"]'));
+change.type('We make pixels dance.', { natural: true });
+document.querySelectorAll('[data-say]').forEach((b) => b.addEventListener('click', () => change.type(b.dataset.say, { natural: true })));
+const countEl = document.querySelector('[data-count]');
+let countId = 0;
+async function countdown() {
+  const id = ++countId;
+  for (let n = 5; n >= 0; n--) {
+    if (id !== countId) return;
+    countEl.innerHTML = `<span class="tw-pop">${n === 0 ? 'Go' : n}</span>`;
+    await sleep(900);
+  }
+}
+document.querySelector('[data-restart]').addEventListener('click', countdown);
+countdown();
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Ticker</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 180vh; overflow-x: clip; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 44px; padding: 40px 0 60vh; }
+h2 { padding: 0 24px; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+.row { display: flex; gap: 40px; align-items: flex-start; padding: 0 24px; }
+.chip { padding: 14px 22px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); white-space: nowrap; font-weight: 600; }
+.logo { font: 800 30px/1 system-ui, sans-serif; letter-spacing: -.02em; white-space: nowrap; opacity: .85; }
+.card { width: 200px; height: 120px; border-radius: 14px; display: grid; place-items: center; font: 800 28px/1 system-ui, sans-serif; }
+</style>
+<style id="effect">
+.ticker { position: relative; min-width: 0; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
+.ticker--overflow { overflow: visible; -webkit-mask-image: none; mask-image: none; }
+.ticker--y { height: 300px; -webkit-mask-image: linear-gradient(transparent, #000 15%, #000 85%, transparent); mask-image: linear-gradient(transparent, #000 15%, #000 85%, transparent); }
+.ticker__track { display: flex; gap: var(--gap, 16px); width: max-content; will-change: transform; padding: 6px 0; }
+.ticker--y .ticker__track { flex-direction: column; width: auto; height: max-content; }
+.ticker.is-draggable { cursor: grab; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.ticker.is-dragging { cursor: grabbing; }
+</style>
+</head>
+<body>
+<main>
+  <section><h2>Basic · slows down on hover</h2><div class="ticker" data-ticker='{"speed":60,"hover":0.2}'><div class="ticker__track"><span class="chip">Design</span><span class="chip">Motion</span><span class="chip">Sound</span><span class="chip">Stories</span><span class="chip">Tiny experiments</span></div></div></section>
+  <section><h2>Draggable with inertia</h2><div class="ticker is-draggable" data-ticker='{"speed":40,"drag":true,"gap":48}'><div class="ticker__track"><span class="logo">NORTHWIND</span><span class="logo">Acme</span><span class="logo">Globex</span><span class="logo">Initech</span><span class="logo">Umbrella</span><span class="logo">Hooli</span></div></div></section>
+  <section><h2>Reacts to page scroll velocity · reverse direction</h2><div class="ticker" data-ticker='{"speed":-50,"scroll":true}'><div class="ticker__track"><span class="chip">★ 4.9 from makers</span><span class="chip">220 effects</span><span class="chip">60 fps</span><span class="chip">Zero dependencies</span></div></div></section>
+  <section><h2>Items react to their offset (centre item grows)</h2><div class="ticker" data-ticker='{"speed":45,"offset":true,"gap":20}'><div class="ticker__track" data-cards></div></div></section>
+  <section><h2>Overflow visible</h2><div class="ticker ticker--overflow" data-ticker='{"speed":30}' style="margin:0 20vw"><div class="ticker__track"><span class="chip">Overflowing</span><span class="chip">past the</span><span class="chip">container edges</span></div></div></section>
+  <section class="row"><div><h2 style="padding:0">Vertical</h2><div class="ticker ticker--y" data-ticker='{"speed":35,"axis":"y"}' style="width:220px"><div class="ticker__track"><span class="chip">Monday</span><span class="chip">Tuesday</span><span class="chip">Wednesday</span><span class="chip">Thursday</span><span class="chip">Friday</span></div></div></div></section>
+</main>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cards = document.querySelector('[data-cards]');
+for (let i = 0; i < 6; i++) { const c = document.createElement('div'); c.className = 'card'; const h = i * 60; c.style.background = `linear-gradient(135deg, hsl(${h} 80% 60%), hsl(${h + 40} 70% 30%))`; c.textContent = i + 1; cards.append(c); }
+let lastScroll = scrollY, scrollVel = 0;
+addEventListener('scroll', () => { scrollVel = scrollY - lastScroll; lastScroll = scrollY; }, { passive: true });
+function ticker(root) {
+  const o = JSON.parse(root.dataset.ticker);
+  const y = o.axis === 'y';
+  const track = root.querySelector('.ticker__track');
+  if (o.gap) track.style.setProperty('--gap', `${o.gap}px`);
+  const originals = [...track.children];
+  const gap = parseFloat(getComputedStyle(track).gap) || 0;
+  const unit = () => originals.reduce((s, el) => s + (y ? el.offsetHeight : el.offsetWidth) + gap, 0);
+  const view = () => (y ? root.clientHeight : root.clientWidth);
+  const fill = () => {
+    track.querySelectorAll('[data-clone]').forEach((c) => c.remove());
+    const copies = Math.min(24, Math.ceil((view() * 2) / unit()) + 1);
+    for (let k = 0; k < copies; k++) originals.forEach((el) => { const c = el.cloneNode(true); c.dataset.clone = ''; c.setAttribute('aria-hidden', 'true'); track.append(c); });
+  };
+  fill();
+  addEventListener('resize', fill);
+  let x = 0, speed = o.speed, current = o.speed, dragging = null, inertia = 0;
+  root.addEventListener('pointerenter', () => { if (o.hover !== undefined) speed = o.speed * o.hover; });
+  root.addEventListener('pointerleave', () => { speed = o.speed; });
+  if (o.drag) {
+    root.addEventListener('pointerdown', (e) => { dragging = { p: e.clientX, x, last: e.clientX, v: 0, t: performance.now() }; root.setPointerCapture(e.pointerId); root.classList.add('is-dragging'); });
+    root.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const now = performance.now();
+      dragging.v = (e.clientX - dragging.last) / Math.max(1, now - dragging.t) * 1000;
+      dragging.last = e.clientX; dragging.t = now;
+      x = dragging.x + (e.clientX - dragging.p);
+    });
+    const up = () => { if (!dragging) return; inertia = performance.now() - dragging.t > 80 ? 0 : dragging.v; dragging = null; root.classList.remove('is-dragging'); };
+    root.addEventListener('pointerup', up);
+    root.addEventListener('pointercancel', up);
+  }
+  let last = performance.now();
+  const frame = (now) => {
+    const dt = Math.min(.05, (now - last) / 1000);
+    last = now;
+    const boost = o.scroll ? Math.sign(o.speed || 1) * Math.min(600, Math.abs(scrollVel) * 40) * Math.sign(scrollVel || 1) : 0;
+    current += (speed + boost - current) * Math.min(1, dt * 4);
+    if (!dragging && !reduce) { x -= current * dt; x += inertia * dt; inertia *= Math.pow(.05, dt); }
+    const u = unit();
+    const wrapped = ((x % u) + u) % u - u;
+    track.style.transform = y ? `translate3d(0, ${wrapped}px, 0)` : `translate3d(${wrapped}px, 0, 0)`;
+    if (o.offset) {
+      const mid = root.getBoundingClientRect().left + root.clientWidth / 2;
+      [...track.children].forEach((el) => {
+        const r = el.getBoundingClientRect();
+        const d = Math.min(1, Math.abs(r.left + r.width / 2 - mid) / (root.clientWidth / 2));
+        el.style.transform = `scale(${1.15 - d * .35})`;
+        el.style.opacity = 1 - d * .55;
+      });
+    }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+document.querySelectorAll('[data-ticker]').forEach(ticker);
+setInterval(() => { scrollVel *= .5; }, 100);
+</script>
+</body>
+</html>

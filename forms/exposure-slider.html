@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Exposure slider</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ffd23f; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 26px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+.preview { width: min(80vw, 420px); aspect-ratio: 4 / 3; border-radius: 16px; background: radial-gradient(80% 80% at 40% 30%, #ffb86b, #8a3b5a 55%, #141428); filter: brightness(calc(1 + var(--ev, 0) * .35)); transition: filter .1s; }
+</style>
+<style id="effect">
+.ev { position: relative; width: min(86vw, 420px); }
+.ev__value { text-align: center; font: 600 15px/1 ui-monospace, Menlo, monospace; color: var(--accent); margin-bottom: 14px; font-variant-numeric: tabular-nums; }
+.ev__ruler { position: relative; height: 46px; overflow: hidden; cursor: grab; touch-action: none; -webkit-mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent); mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent); }
+.ev__ruler:active { cursor: grabbing; }
+.ev__ticks { position: absolute; left: 50%; top: 0; height: 100%; display: flex; align-items: center; gap: var(--gap); will-change: transform; }
+.ev__tick { flex: none; width: 2px; height: var(--h, 12px); border-radius: 2px; background: rgba(255, 255, 255, var(--o, .4)); transition: height .15s, background-color .15s; }
+.ev__tick.is-major { --h: 22px; }
+.ev__center { position: absolute; left: 50%; top: 4px; bottom: 4px; width: 2px; margin-left: -1px; background: var(--accent); border-radius: 2px; }
+.ev:focus-within .ev__center { box-shadow: 0 0 0 3px rgba(255, 210, 63, .3); }
+</style>
+</head>
+<body>
+<div class="preview" data-preview></div>
+<div class="ev" data-ev>
+  <p class="ev__value" data-out>0.0</p>
+  <div class="ev__ruler" data-ruler role="slider" tabindex="0" aria-label="Exposure" aria-valuemin="-2" aria-valuemax="2" aria-valuenow="0">
+    <div class="ev__ticks" data-ticks></div>
+    <div class="ev__center" aria-hidden="true"></div>
+  </div>
+</div>
+<script>
+const MIN = -2, MAX = 2, STEP = .1, GAP = 10;
+const ticksBox = document.querySelector('[data-ticks]');
+const ruler = document.querySelector('[data-ruler]');
+const out = document.querySelector('[data-out]');
+const preview = document.querySelector('[data-preview]');
+const count = Math.round((MAX - MIN) / STEP) + 1;
+ticksBox.style.setProperty('--gap', `${GAP}px`);
+for (let i = 0; i < count; i++) { const t = document.createElement('i'); t.className = `ev__tick${i % 5 === 0 ? ' is-major' : ''}`; ticksBox.append(t); }
+const ticks = [...ticksBox.children];
+const pitch = GAP + 2;
+let value = 0, shown = 0, v = 0;
+const toX = (val) => -((val - MIN) / STEP) * pitch - 1;
+const set = (val) => { value = Math.max(MIN, Math.min(MAX, Math.round(val / STEP) * STEP)); ruler.setAttribute('aria-valuenow', value.toFixed(1)); };
+let drag = null;
+ruler.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, start: value }; ruler.setPointerCapture(e.pointerId); });
+ruler.addEventListener('pointermove', (e) => { if (drag) { const raw = drag.start - ((e.clientX - drag.x) / pitch) * STEP; value = Math.max(MIN - .3, Math.min(MAX + .3, raw)); } });
+const up = () => { if (drag) { drag = null; set(value); } };
+ruler.addEventListener('pointerup', up);
+ruler.addEventListener('pointercancel', up);
+ruler.addEventListener('keydown', (e) => {
+  const d = { ArrowRight: STEP, ArrowUp: STEP, ArrowLeft: -STEP, ArrowDown: -STEP, Home: MIN - value, End: MAX - value }[e.key];
+  if (d === undefined) return;
+  e.preventDefault();
+  set(value + d);
+});
+ruler.addEventListener('wheel', (e) => { e.preventDefault(); set(value + Math.sign(e.deltaX || e.deltaY) * STEP); }, { passive: false });
+const tick = () => {
+  const target = drag ? value : Math.max(MIN, Math.min(MAX, value));
+  v += (-220 * (shown - target) - 26 * v) / 60;
+  shown += v / 60;
+  ticksBox.style.transform = `translateX(${toX(shown)}px)`;
+  const center = (shown - MIN) / STEP;
+  ticks.forEach((t, i) => {
+    const d = Math.abs(i - center);
+    t.style.setProperty('--o', Math.max(.18, 1 - d * .06).toFixed(2));
+    if (!t.classList.contains('is-major')) t.style.setProperty('--h', `${Math.max(10, 20 - d * 1.4)}px`);
+  });
+  const display = Math.round(Math.max(MIN, Math.min(MAX, shown)) * 10) / 10;
+  out.textContent = `${display > 0 ? '+' : ''}${display.toFixed(1)} EV`;
+  preview.style.setProperty('--ev', shown.toFixed(3));
+  requestAnimationFrame(tick);
+};
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

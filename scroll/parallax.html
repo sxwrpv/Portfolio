@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Parallax</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --text: #f4f4f5; --muted: #a1a1aa; }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, sans-serif; }
+.copy { position: relative; z-index: 2; max-width: 680px; margin: 0 auto; padding: 12vh 20px 70vh; background: var(--bg); display: grid; gap: 14px; }
+.copy p { color: var(--muted); }
+</style>
+<style id="effect">
+.plx { position: relative; height: 130vh; overflow: hidden; background: linear-gradient(#0b1530, #2b2350 45%, #c8645a 80%, #f2a65e); }
+.plx__layer { position: absolute; left: -5%; right: -5%; bottom: -10vh; will-change: transform; }
+.plx__layer svg { display: block; width: 100%; height: auto; }
+.plx__sun { position: absolute; left: 50%; top: 38%; width: 22vw; aspect-ratio: 1; margin-left: -11vw; border-radius: 50%; background: radial-gradient(#ffe6a8, #ffb056 60%, transparent 70%); }
+.plx__title { position: absolute; inset: 22vh 0 auto; text-align: center; font: 900 clamp(40px, 8vw, 110px)/1 system-ui, sans-serif; letter-spacing: -.03em; }
+</style>
+</head>
+<body>
+<section class="plx" data-plx>
+  <div class="plx__sun plx__layer" data-depth="0.15" style="bottom:auto"></div>
+  <h1 class="plx__title plx__layer" data-depth="0.5" style="bottom:auto">Depth</h1>
+  <div class="plx__layer" data-depth="0.35"><svg viewBox="0 0 1200 400" preserveAspectRatio="none"><path fill="#3d2a5c" d="M0 260 220 120 380 220 560 80 760 230 940 110 1200 240V400H0Z"/></svg></div>
+  <div class="plx__layer" data-depth="0.2"><svg viewBox="0 0 1200 400" preserveAspectRatio="none"><path fill="#24193d" d="M0 300 160 210 330 290 520 180 700 300 880 200 1060 280 1200 220V400H0Z"/></svg></div>
+  <div class="plx__layer" data-depth="0"><svg viewBox="0 0 1200 400" preserveAspectRatio="none"><path fill="#0e0e10" d="M0 340 240 290 470 345 720 300 980 350 1200 310V400H0Z"/></svg></div>
+</section>
+<div class="copy"><h2>Layers move at different speeds</h2><p>Each layer gets a depth value. Far layers move more with the scroll, so they appear to drift slower than the page.</p></div>
+<script>
+const scene = document.querySelector('[data-plx]');
+const layers = [...scene.querySelectorAll('[data-depth]')];
+const update = () => {
+  const y = Math.max(0, -scene.getBoundingClientRect().top);
+  layers.forEach((l) => { l.style.transform = `translate3d(0, ${y * Number(l.dataset.depth)}px, 0)`; });
+};
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  addEventListener('scroll', () => requestAnimationFrame(update), { passive: true });
+  update();
+}
+</script>
+</body>
+</html>

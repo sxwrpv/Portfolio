@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Radial menu</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+</style>
+<style id="effect">
+.radial { position: relative; width: 280px; height: 280px; display: grid; place-items: center; }
+.radial__main { position: relative; z-index: 2; width: 72px; height: 72px; border: 0; border-radius: 50%; background: var(--accent); color: #111; font-size: 30px; cursor: pointer; transition: transform .5s cubic-bezier(.2, 1.4, .3, 1); }
+.radial[data-open] .radial__main { transform: rotate(45deg) scale(.9); }
+.radial__opt { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border: 1px solid var(--line); border-radius: 50%; background: var(--panel); color: var(--text); font-size: 20px; cursor: pointer; opacity: 0; transform: rotate(var(--a)) translateX(0) rotate(calc(var(--a) * -1)) scale(.3); transition: transform .5s cubic-bezier(.2, 1.5, .3, 1), opacity .2s; transition-delay: calc((var(--n) - var(--i)) * 20ms); pointer-events: none; }
+.radial[data-open] .radial__opt { opacity: 1; transform: rotate(var(--a)) translateX(104px) rotate(calc(var(--a) * -1)) scale(1); transition-delay: calc(var(--i) * 40ms); pointer-events: auto; }
+.radial__opt:hover, .radial__opt:focus-visible { background: var(--text); color: var(--bg); }
+.radial__tip { position: absolute; left: 50%; bottom: -10px; translate: -50% 0; color: var(--muted); font-size: 14px; min-height: 1.5em; }
+@media (prefers-reduced-motion: reduce) { .radial__opt, .radial__main { transition: opacity .15s; } }
+</style>
+</head>
+<body>
+<div class="radial" data-radial>
+  <button class="radial__main" type="button" aria-expanded="false" aria-label="Actions" data-main>+</button>
+  <p class="radial__tip" data-tip aria-live="polite"></p>
+</div>
+<script>
+const OPTS = [['📷', 'Photo'], ['🎤', 'Voice'], ['📍', 'Location'], ['📎', 'File'], ['😊', 'Sticker'], ['📅', 'Event']];
+const root = document.querySelector('[data-radial]');
+const main = root.querySelector('[data-main]');
+const tip = root.querySelector('[data-tip]');
+root.style.setProperty('--n', OPTS.length);
+OPTS.forEach(([icon, label], i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'radial__opt';
+  b.tabIndex = -1;
+  b.setAttribute('aria-label', label);
+  b.style.setProperty('--i', i);
+  b.style.setProperty('--a', `${-90 + (360 / OPTS.length) * i}deg`);
+  b.textContent = icon;
+  b.addEventListener('pointerenter', () => { tip.textContent = label; });
+  b.addEventListener('focus', () => { tip.textContent = label; });
+  b.addEventListener('click', () => { tip.textContent = `${label} selected`; set(false); });
+  root.append(b);
+});
+const set = (open) => {
+  root.toggleAttribute('data-open', open);
+  main.setAttribute('aria-expanded', String(open));
+  root.querySelectorAll('.radial__opt').forEach((b) => { b.tabIndex = open ? 0 : -1; });
+  if (open) tip.textContent = '';
+};
+main.addEventListener('click', () => set(!root.hasAttribute('data-open')));
+addEventListener('keydown', (e) => { if (e.key === 'Escape') set(false); });
+</script>
+</body>
+</html>

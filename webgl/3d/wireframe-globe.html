@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Wireframe globe</title>
+<style id="page">
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body { overflow: hidden; background: #000; color: #fff; font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+canvas[data-gl] { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.dock { position: fixed; left: 16px; bottom: 16px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; }
+.dock button, .dock label { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, .28); border-radius: 999px; background: rgba(10, 10, 12, .5); color: #fff; font: 500 13px/1 system-ui, sans-serif; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.dock input[type=file] { display: none; }
+.dock input[type=color] { width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
+.gl-fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: #aaa; }
+.embed .dock, .embed .hint { display: none !important; }
+.embed canvas[data-gl] { touch-action: pan-y; }
+body { background: #3f9a1d; color: #0b0b0b; }
+svg { position: fixed; inset: 0; width: 100%; height: 100%; }
+.corner { position: fixed; font: 700 11px/1.35 "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+.tl { left: 2.4vw; top: 2.4vw; font-size: 13px; }
+.bl { left: 2.4vw; bottom: 2.4vw; max-width: 240px; text-transform: none; font-weight: 500; }
+.br { right: 2.4vw; bottom: 2.4vw; }
+</style>
+</head>
+<body>
+<svg viewBox="-100 -60 200 120" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><g fill="none" stroke="#0b0b0b" stroke-width="2.1" data-g></g></svg>
+<p class="corner tl">Microglobal</p>
+<p class="corner bl">A network of partners across<br>every continent and time zone.</p>
+<p class="corner br">Est 2030</p>
+<script>
+const g = document.querySelector('[data-g]');
+const R = 78, RY = 46;
+const ns = 'http://www.w3.org/2000/svg';
+const mk = (tag, attrs) => { const el = document.createElementNS(ns, tag); Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v)); g.append(el); return el; };
+mk('ellipse', { cx: 0, cy: 0, rx: R, ry: RY });
+[-.62, -.3, 0, .3, .62].forEach((k) => mk('ellipse', { cx: 0, cy: k * RY, rx: R * Math.sqrt(1 - k * k), ry: 3.2 * Math.sqrt(1 - k * k) }));
+const merids = Array.from({ length: 6 }, () => mk('ellipse', { cx: 0, cy: 0, rx: 1, ry: RY }));
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function frame(now) {
+  const t = reduce ? .3 : now / 6000;
+  merids.forEach((m, i) => { const a = t + i * Math.PI / 6; m.setAttribute('rx', Math.max(.4, Math.abs(Math.cos(a)) * R)); });
+  if (!reduce) requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

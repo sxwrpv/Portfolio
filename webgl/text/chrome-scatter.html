@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Scattering chrome letters</title>
+<style id="page">
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body { overflow: hidden; background: #000; color: #fff; font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+canvas[data-gl] { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.dock { position: fixed; left: 16px; bottom: 16px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; }
+.dock button, .dock label { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, .28); border-radius: 999px; background: rgba(10, 10, 12, .5); color: #fff; font: 500 13px/1 system-ui, sans-serif; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.dock input[type=file] { display: none; }
+.dock input[type=color] { width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
+.gl-fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: #aaa; }
+.embed .dock, .embed .hint { display: none !important; }
+.embed canvas[data-gl] { touch-action: pan-y; }
+body { background: #fff; color: #111; overflow: hidden; }
+.grid { position: fixed; inset: -20%; background-image: linear-gradient(#ececec 1px, transparent 1px), linear-gradient(90deg, #ececec 1px, transparent 1px); background-size: 46px 46px; transform: perspective(700px) rotateX(38deg); transform-origin: 50% 70%; }
+.word { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; perspective: 900px; font: 700 clamp(70px, 15vw, 230px)/1 "Snell Roundhand", "Segoe Script", "Brush Script MT", cursive; }
+.word span { display: inline-block; white-space: pre; background: linear-gradient(180deg, #fafafa 0%, #c8c8c8 30%, #3b3b3b 48%, #a7a7a7 52%, #f2f2f2 70%, #6b6b6b 100%); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 1px 1px 0 rgba(90, 90, 90, .55), 2px 2px 0 rgba(80, 80, 80, .5), 3px 3px 0 rgba(70, 70, 70, .45), 4px 4px 0 rgba(60, 60, 60, .4), 5px 5px 0 rgba(50, 50, 50, .35), 8px 12px 18px rgba(0, 0, 0, .2); will-change: transform; }
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+<h1 class="word" aria-label="Off Beat" data-word></h1>
+<script>
+const word = document.querySelector('[data-word]');
+const letters = [...'Off Beat'].map((ch) => { const s = document.createElement('span'); s.textContent = ch; s.setAttribute('aria-hidden', 'true'); word.append(s); return { el: s, x: 0, y: 0, z: 0, r: 0, vx: 0, vy: 0 }; });
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const rnd = (a) => (Math.random() * 2 - 1) * a;
+function scatter() {
+  if (reduce) return;
+  letters.forEach((l, i) => {
+    const to = `translate3d(${rnd(260)}px, ${rnd(160)}px, ${rnd(300)}px) rotate3d(${Math.random()}, ${Math.random()}, ${Math.random()}, ${rnd(260)}deg)`;
+    l.el.animate([{ transform: 'none' }, { transform: to, offset: .45 }, { transform: to, offset: .6 }, { transform: 'none' }], { duration: 3200, delay: i * 45, easing: 'cubic-bezier(.5, 0, .2, 1)' });
+  });
+}
+setTimeout(scatter, 900);
+setInterval(scatter, 5200);
+let mx = -1e4, my = -1e4, prev = performance.now(), acc = 0;
+addEventListener('pointermove', (e) => { mx = e.clientX; my = e.clientY; });
+function frame(now) {
+  acc = Math.min(4, acc + (now - prev) / 1000 * 60);
+  prev = now;
+  const steps = Math.floor(acc);
+  acc -= steps;
+  letters.forEach((l) => {
+    const r = l.el.getBoundingClientRect();
+    const dx = r.left + r.width / 2 - l.x - mx, dy = r.top + r.height / 2 - l.y - my, d = Math.hypot(dx, dy);
+    const f = d < 180 ? (180 - d) / 180 : 0;
+    for (let i = 0; i < steps; i++) {
+      l.vx += (dx / (d || 1) * f * 40 - l.x) * .12;
+      l.vy += (dy / (d || 1) * f * 40 - l.y) * .12;
+      l.vx *= .7; l.vy *= .7;
+      l.x += l.vx; l.y += l.vy;
+    }
+    l.el.style.translate = `${l.x.toFixed(2)}px ${l.y.toFixed(2)}px`;
+  });
+  requestAnimationFrame(frame);
+}
+if (!reduce) requestAnimationFrame(frame);
+</script>
+</body>
+</html>

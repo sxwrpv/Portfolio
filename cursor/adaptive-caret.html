@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Adaptive caret cursor</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; gap: 22px; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; cursor: none; max-width: 760px; margin: 0 auto; }
+h1 { font: 900 72px/1 system-ui, sans-serif; letter-spacing: -.03em; }
+h2 { font: 700 34px/1.2 system-ui, sans-serif; }
+p { color: var(--muted); font-size: 18px; }
+small { font-size: 13px; }
+</style>
+<style id="effect">
+.caret { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; width: var(--w, 14px); height: var(--h, 14px); margin-left: calc(var(--w, 14px) / -2); margin-top: calc(var(--h, 14px) / -2); border-radius: var(--r, 50%); background: var(--accent); mix-blend-mode: difference; transform: translate3d(var(--x), var(--y), 0); transition: width .2s, height .2s, border-radius .2s, margin .2s; }
+@media (hover: none) { .caret { display: none; } body { cursor: auto; } }
+</style>
+</head>
+<body>
+<h1>Big headline</h1>
+<h2>A medium subheading for the section</h2>
+<p>Body copy changes the caret to match the line height of the text under the pointer, like a text cursor that knows the font size.</p>
+<small>Small print works too.</small>
+<div class="caret" data-caret aria-hidden="true"></div>
+<script>
+const caret = document.querySelector('[data-caret]');
+addEventListener('pointermove', (e) => {
+  caret.style.setProperty('--x', `${e.clientX}px`);
+  caret.style.setProperty('--y', `${e.clientY}px`);
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const textual = el && el !== document.body && el !== document.documentElement && /\S/.test(el.textContent || '') && ['P', 'H1', 'H2', 'H3', 'SMALL', 'SPAN', 'A', 'LI'].includes(el.tagName);
+  if (textual) {
+    const fs = parseFloat(getComputedStyle(el).fontSize);
+    caret.style.setProperty('--w', '3px');
+    caret.style.setProperty('--h', `${Math.round(fs * 1.05)}px`);
+    caret.style.setProperty('--r', '2px');
+  } else {
+    caret.style.setProperty('--w', '14px');
+    caret.style.setProperty('--h', '14px');
+    caret.style.setProperty('--r', '50%');
+  }
+});
+</script>
+</body>
+</html>

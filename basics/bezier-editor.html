@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23070708%22/%3E%3Cpath d=%22M32 13 49 27 32 51 15 27Z%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%223.2%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 27h34M24 27l8 24 8-24M24 27l8-14 8 14%22 fill=%22none%22 stroke=%22%23f1f0ec%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<title>Cubic-bezier editor</title>
+<style id="page">
+:root { color-scheme: dark; --bg: #0e0e10; --panel: #18181b; --line: #2a2a2e; --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff6a3d; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 18px; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+code { padding: 10px 14px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); font: 14px/1 ui-monospace, Menlo, monospace; }
+.track { position: relative; width: 320px; height: 44px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.track i { position: absolute; left: 6px; top: 6px; width: 30px; height: 30px; border-radius: 8px; background: var(--accent); }
+</style>
+<style id="effect">
+.bz { width: 320px; height: 320px; touch-action: none; overflow: visible; }
+.bz__grid { fill: none; stroke: var(--line); }
+.bz__arm { stroke: var(--muted); stroke-width: 1.5; }
+.bz__curve { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; }
+.bz__handle { fill: var(--text); stroke: var(--bg); stroke-width: 3; cursor: grab; outline: none; }
+.bz__handle:focus-visible { stroke: var(--accent); }
+</style>
+</head>
+<body>
+<svg class="bz" data-bz viewBox="-20 -60 340 420" role="group" aria-label="Easing curve editor">
+  <rect class="bz__grid" x="0" y="0" width="300" height="300"/>
+  <line class="bz__arm" data-arm="1"/><line class="bz__arm" data-arm="2"/>
+  <path class="bz__curve" data-curve/>
+  <circle class="bz__handle" r="10" data-h="1" tabindex="0" role="slider" aria-label="First control point"/>
+  <circle class="bz__handle" r="10" data-h="2" tabindex="0" role="slider" aria-label="Second control point"/>
+</svg>
+<code data-out></code>
+<div class="track" aria-hidden="true"><i data-runner></i></div>
+<script>
+const svg = document.querySelector('[data-bz]');
+const S = 300;
+const pts = { 1: [.25, .1], 2: [.25, 1] };
+const toXY = ([x, y]) => [x * S, S - y * S];
+const out = document.querySelector('[data-out]');
+const runner = document.querySelector('[data-runner]');
+let anim;
+function render() {
+  const [x1, y1] = toXY(pts[1]), [x2, y2] = toXY(pts[2]);
+  svg.querySelector('[data-curve]').setAttribute('d', `M0 ${S} C ${x1} ${y1}, ${x2} ${y2}, ${S} 0`);
+  [[1, [0, S], [x1, y1]], [2, [S, 0], [x2, y2]]].forEach(([k, a, b]) => { const l = svg.querySelector(`[data-arm="${k}"]`); l.setAttribute('x1', a[0]); l.setAttribute('y1', a[1]); l.setAttribute('x2', b[0]); l.setAttribute('y2', b[1]); });
+  [1, 2].forEach((k) => { const h = svg.querySelector(`[data-h="${k}"]`); const [x, y] = toXY(pts[k]); h.setAttribute('cx', x); h.setAttribute('cy', y); h.setAttribute('aria-valuetext', pts[k].map((v) => v.toFixed(2)).join(', ')); });
+  const css = `cubic-bezier(${pts[1][0].toFixed(2)}, ${pts[1][1].toFixed(2)}, ${pts[2][0].toFixed(2)}, ${pts[2][1].toFixed(2)})`;
+  out.textContent = css;
+  anim?.cancel();
+  anim = runner.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(278px)' }], { duration: 1100, easing: css, iterations: Infinity, direction: 'alternate', delay: 200, endDelay: 300 });
+}
+let active = null;
+const toPoint = (e) => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; const q = p.matrixTransform(svg.getScreenCTM().inverse()); return [Math.max(0, Math.min(1, q.x / S)), Math.max(-.5, Math.min(1.5, (S - q.y) / S))]; };
+svg.querySelectorAll('[data-h]').forEach((h) => {
+  h.addEventListener('pointerdown', (e) => { active = h.dataset.h; h.setPointerCapture(e.pointerId); });
+  h.addEventListener('pointermove', (e) => { if (active === h.dataset.h) { pts[active] = toPoint(e); render(); } });
+  h.addEventListener('pointerup', () => { active = null; });
+  h.addEventListener('keydown', (e) => {
+    const d = { ArrowLeft: [-.02, 0], ArrowRight: [.02, 0], ArrowUp: [0, .02], ArrowDown: [0, -.02] }[e.key];
+    if (!d) return;
+    e.preventDefault();
+    const p = pts[h.dataset.h];
+    pts[h.dataset.h] = [Math.max(0, Math.min(1, p[0] + d[0])), Math.max(-.5, Math.min(1.5, p[1] + d[1]))];
+    render();
+  });
+});
+render();
+</script>
+</body>
+</html>
