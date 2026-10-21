@@ -15,24 +15,24 @@
 
 <table>
 <tr>
-<td><a href="https://sxwrpv-motion.vercel.app/webgl/3d/gem.html"><img src="_thumbs/webgl_3d_gem.jpg" alt="Gem — WebGL"></a></td>
-<td><a href="https://sxwrpv-motion.vercel.app/webgl/3d/metal-knot.html"><img src="_thumbs/webgl_3d_metal-knot.jpg" alt="Metal knot — WebGL"></a></td>
-<td><a href="https://sxwrpv-motion.vercel.app/webgl/3d/museum-statue.html"><img src="_thumbs/webgl_3d_museum-statue.jpg" alt="Museum statue — WebGL"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/webgl/3d/gem.html"><img src="code/_thumbs/webgl_3d_gem.jpg" alt="Gem — WebGL"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/webgl/3d/metal-knot.html"><img src="code/_thumbs/webgl_3d_metal-knot.jpg" alt="Metal knot — WebGL"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/webgl/3d/museum-statue.html"><img src="code/_thumbs/webgl_3d_museum-statue.jpg" alt="Museum statue — WebGL"></a></td>
 </tr>
 <tr>
-<td><a href="https://sxwrpv-motion.vercel.app/webgl/text/refracted-wordmark.html"><img src="_thumbs/webgl_text_refracted-wordmark.jpg" alt="Refracted wordmark — WebGL"></a></td>
-<td><a href="https://sxwrpv-motion.vercel.app/webgl/light/neon-tubes.html"><img src="_thumbs/webgl_light_neon-tubes.jpg" alt="Neon tubes — WebGL"></a></td>
-<td><a href="https://sxwrpv-motion.vercel.app/webgl/retro/crt-tv.html"><img src="_thumbs/webgl_retro_crt-tv.jpg" alt="CRT TV — WebGL"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/webgl/text/refracted-wordmark.html"><img src="code/_thumbs/webgl_text_refracted-wordmark.jpg" alt="Refracted wordmark — WebGL"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/webgl/light/neon-tubes.html"><img src="code/_thumbs/webgl_light_neon-tubes.jpg" alt="Neon tubes — WebGL"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/webgl/retro/crt-tv.html"><img src="code/_thumbs/webgl_retro_crt-tv.jpg" alt="CRT TV — WebGL"></a></td>
 </tr>
 <tr>
-<td><a href="https://sxwrpv-motion.vercel.app/webgl/dither/pop-art.html"><img src="_thumbs/webgl_dither_pop-art.jpg" alt="Pop-art dither — WebGL"></a></td>
-<td><a href="https://sxwrpv-motion.vercel.app/webgl/gradients/fluted-glass.html"><img src="_thumbs/webgl_gradients_fluted-glass.jpg" alt="Fluted glass — WebGL"></a></td>
-<td><a href="https://sxwrpv-motion.vercel.app/webgl/mouse/koi-pond.html"><img src="_thumbs/webgl_mouse_koi-pond.jpg" alt="Koi pond — WebGL"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/webgl/dither/pop-art.html"><img src="code/_thumbs/webgl_dither_pop-art.jpg" alt="Pop-art dither — WebGL"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/webgl/gradients/fluted-glass.html"><img src="code/_thumbs/webgl_gradients_fluted-glass.jpg" alt="Fluted glass — WebGL"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/webgl/mouse/koi-pond.html"><img src="code/_thumbs/webgl_mouse_koi-pond.jpg" alt="Koi pond — WebGL"></a></td>
 </tr>
 <tr>
-<td><a href="https://sxwrpv-motion.vercel.app/webgl/text/liquid-chrome.html"><img src="_thumbs/webgl_text_liquid-chrome.jpg" alt="Liquid chrome text — WebGL"></a></td>
-<td><a href="https://sxwrpv-motion.vercel.app/charts.html#sankey-chart"><img src="_thumbs/charts_sankey-chart.jpg" alt="Sankey chart"></a></td>
-<td><a href="https://sxwrpv-motion.vercel.app/charts.html#candlestick-chart"><img src="_thumbs/charts_candlestick-chart.jpg" alt="Candlestick chart"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/webgl/text/liquid-chrome.html"><img src="code/_thumbs/webgl_text_liquid-chrome.jpg" alt="Liquid chrome text — WebGL"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/charts.html#sankey-chart"><img src="code/_thumbs/charts_sankey-chart.jpg" alt="Sankey chart"></a></td>
+<td><a href="https://sxwrpv-motion.vercel.app/charts.html#candlestick-chart"><img src="code/_thumbs/charts_candlestick-chart.jpg" alt="Candlestick chart"></a></td>
 </tr>
 </table>
 
